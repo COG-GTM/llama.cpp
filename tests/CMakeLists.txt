@@ -199,14 +199,14 @@ if(LLAMA_YAML_CONFIG)
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
         NAME test-yaml-only-config
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
-        ARGS --config configs/minimal.yaml --predict 10 --seed 42
+        ARGS --config configs/minimal.yaml --predict 10 --seed 42 --no-cnv
     )
     
     llama_test_cmd(
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
         NAME test-yaml-with-overrides
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
-        ARGS --config configs/minimal.yaml --predict 20 --temp 0.5 --seed 42
+        ARGS --config configs/minimal.yaml --predict 20 --temp 0.5 --seed 42 --no-cnv
     )
     
     add_test(
