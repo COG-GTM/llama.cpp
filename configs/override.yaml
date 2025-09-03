@@ -1,0 +1,35 @@
+
+model: "models/advanced-model.gguf"
+ctx-size: 4096
+batch-size: 1024
+ubatch-size: 256
+
+threads: 8
+threads-batch: 8
+no-perf: false
+no-warmup: false
+flash-attn: "auto"
+
+predict: 256
+keep: 0
+
+seed: 1337
+temp: 0.8
+top-k: 50
+top-p: 0.95
+min-p: 0.05
+samplers: "top_k;top_p;min_p;temp"
+ignore-eos: false
+
+prompt: "Explain the concept of machine learning in simple terms."
+escape: true
+special: false
+color: true
+verbose-prompt: false
+no-display-prompt: false
+
+interactive: false
+interactive-first: false
+multiline-input: false
+conversation: false
+single-turn: false

@@ -192,6 +192,33 @@ if (NOT WIN32)
     llama_build_and_test(test-arg-parser.cpp)
 endif()
 
+if(LLAMA_YAML_CONFIG)
+    llama_build_and_test(test-yaml-config.cpp)
+    
+    llama_test_cmd(
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
+        NAME test-yaml-only-config
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+        ARGS --config configs/minimal.yaml --predict 10 --seed 42
+    )
+    
+    llama_test_cmd(
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
+        NAME test-yaml-with-overrides
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+        ARGS --config configs/minimal.yaml --predict 20 --temp 0.5 --seed 42
+    )
+    
+    add_test(
+        NAME test-yaml-cli-parity
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/..
+        COMMAND ${CMAKE_COMMAND} -E env
+        ${CMAKE_CURRENT_SOURCE_DIR}/test-yaml-parity.sh
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
+    )
+    set_property(TEST test-yaml-cli-parity PROPERTY LABELS "main")
+endif()
+
 if (NOT LLAMA_SANITIZE_ADDRESS)
   # TODO: repair known memory leaks
   llama_build_and_test(test-opt.cpp)

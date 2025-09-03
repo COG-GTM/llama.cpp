@@ -1,0 +1,13 @@
+
+model: "models/my-model.gguf"
+
+predict: 128
+ctx-size: 2048
+batch-size: 512
+
+seed: 42
+temp: 0.7
+top-k: 40
+top-p: 0.9
+
+prompt: "Hello, how are you?"

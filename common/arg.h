@@ -72,6 +72,9 @@ struct common_params_context {
     common_params_context(common_params & params) : params(params) {}
 };
 
+bool common_params_load_yaml_config(const std::string & config_path, common_params & params);
+std::vector<std::string> common_params_get_valid_yaml_keys();
+
 // parse input arguments from CLI
 // if one argument has invalid value, it will automatically display usage of the specific argument (and not the full usage message)
 bool common_params_parse(int argc, char ** argv, common_params & params, llama_example ex, void(*print_usage)(int, char **) = nullptr);
