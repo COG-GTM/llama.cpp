@@ -9,5 +9,3 @@ seed: 42
 temp: 0.7
 top-k: 40
 top-p: 0.9
-
-prompt: "Hello, how are you?"
