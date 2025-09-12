@@ -78,10 +78,10 @@ static void collect_keys(const YAML::Node & node, const std::string & prefix, st
 static void validate_keys(const YAML::Node & root) {
     std::set<std::string> found_keys;
     collect_keys(root, "", found_keys);
-    
+
     const auto valid_keys = get_valid_keys();
     std::vector<std::string> unknown_keys;
-    
+
     for (const auto & key : found_keys) {
         if (valid_keys.find(key) == valid_keys.end()) {
             bool is_parent = false;
@@ -96,7 +96,6 @@ static void validate_keys(const YAML::Node & root) {
             }
         }
     }
-    
     if (!unknown_keys.empty()) {
         std::ostringstream ss;
         ss << "Unknown YAML keys: ";
@@ -172,11 +171,11 @@ static common_conversation_mode parse_conversation_mode(const std::string & mode
 bool common_load_yaml_config(const std::string & path, common_params & params) {
     try {
         YAML::Node root = YAML::LoadFile(path);
-        
+
         validate_keys(root);
-        
+
         fs::path yaml_dir = fs::absolute(path).parent_path();
-        
+
         if (root["model"]) {
             auto model = root["model"];
             if (model["path"]) {
@@ -192,7 +191,7 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
                 params.model.hf_file = model["hf_file"].as<std::string>();
             }
         }
-        
+
         if (root["model_alias"]) params.model_alias = root["model_alias"].as<std::string>();
         if (root["hf_token"]) params.hf_token = root["hf_token"].as<std::string>();
         if (root["prompt"]) params.prompt = root["prompt"].as<std::string>();
@@ -200,7 +199,6 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["prompt_file"]) {
             params.prompt_file = resolve_path(root["prompt_file"].as<std::string>(), yaml_dir);
         }
-        
         if (root["n_predict"]) params.n_predict = root["n_predict"].as<int32_t>();
         if (root["n_ctx"]) params.n_ctx = root["n_ctx"].as<int32_t>();
         if (root["n_batch"]) params.n_batch = root["n_batch"].as<int32_t>();
@@ -212,7 +210,6 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["grp_attn_n"]) params.grp_attn_n = root["grp_attn_n"].as<int32_t>();
         if (root["grp_attn_w"]) params.grp_attn_w = root["grp_attn_w"].as<int32_t>();
         if (root["n_print"]) params.n_print = root["n_print"].as<int32_t>();
-        
         if (root["rope_freq_base"]) params.rope_freq_base = root["rope_freq_base"].as<float>();
         if (root["rope_freq_scale"]) params.rope_freq_scale = root["rope_freq_scale"].as<float>();
         if (root["yarn_ext_factor"]) params.yarn_ext_factor = root["yarn_ext_factor"].as<float>();
@@ -220,10 +217,10 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["yarn_beta_fast"]) params.yarn_beta_fast = root["yarn_beta_fast"].as<float>();
         if (root["yarn_beta_slow"]) params.yarn_beta_slow = root["yarn_beta_slow"].as<float>();
         if (root["yarn_orig_ctx"]) params.yarn_orig_ctx = root["yarn_orig_ctx"].as<int32_t>();
-        
+
         if (root["n_gpu_layers"]) params.n_gpu_layers = root["n_gpu_layers"].as<int32_t>();
         if (root["main_gpu"]) params.main_gpu = root["main_gpu"].as<int32_t>();
-        
+
         if (root["split_mode"]) {
             params.split_mode = parse_split_mode(root["split_mode"].as<std::string>());
         }
@@ -242,7 +239,7 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["conversation_mode"]) {
             params.conversation_mode = parse_conversation_mode(root["conversation_mode"].as<std::string>());
         }
-        
+
         if (root["use_mmap"]) params.use_mmap = root["use_mmap"].as<bool>();
         if (root["use_mlock"]) params.use_mlock = root["use_mlock"].as<bool>();
         if (root["verbose_prompt"]) params.verbose_prompt = root["verbose_prompt"].as<bool>();
@@ -255,7 +252,7 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["simple_io"]) params.simple_io = root["simple_io"].as<bool>();
         if (root["interactive"]) params.interactive = root["interactive"].as<bool>();
         if (root["interactive_first"]) params.interactive_first = root["interactive_first"].as<bool>();
-        
+
         if (root["input_prefix"]) params.input_prefix = root["input_prefix"].as<std::string>();
         if (root["input_suffix"]) params.input_suffix = root["input_suffix"].as<std::string>();
         if (root["logits_file"]) {
@@ -264,39 +261,39 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         if (root["path_prompt_cache"]) {
             params.path_prompt_cache = resolve_path(root["path_prompt_cache"].as<std::string>(), yaml_dir);
         }
-        
+
         if (root["cache_type_k"]) {
             params.cache_type_k = parse_ggml_type(root["cache_type_k"].as<std::string>());
         }
         if (root["cache_type_v"]) {
             params.cache_type_v = parse_ggml_type(root["cache_type_v"].as<std::string>());
         }
-        
+
         if (root["antiprompt"]) {
             params.antiprompt.clear();
             for (const auto & item : root["antiprompt"]) {
                 params.antiprompt.push_back(item.as<std::string>());
             }
         }
-        
+
         if (root["in_files"]) {
             params.in_files.clear();
             for (const auto & item : root["in_files"]) {
                 params.in_files.push_back(resolve_path(item.as<std::string>(), yaml_dir));
             }
         }
-        
+
         if (root["image"]) {
             params.image.clear();
             for (const auto & item : root["image"]) {
                 params.image.push_back(resolve_path(item.as<std::string>(), yaml_dir));
             }
         }
-        
+
         if (root["seed"]) {
             params.sampling.seed = root["seed"].as<uint32_t>();
         }
-        
+
         if (root["sampling"]) {
             auto sampling = root["sampling"];
             if (sampling["seed"]) params.sampling.seed = sampling["seed"].as<uint32_t>();
@@ -330,7 +327,7 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
             if (sampling["grammar"]) params.sampling.grammar = sampling["grammar"].as<std::string>();
             if (sampling["grammar_lazy"]) params.sampling.grammar_lazy = sampling["grammar_lazy"].as<bool>();
         }
-        
+
         return true;
     } catch (const YAML::Exception & e) {
         throw std::invalid_argument("YAML parsing error: " + std::string(e.what()));

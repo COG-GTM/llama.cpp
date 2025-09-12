@@ -1236,7 +1236,6 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
                 break; // single --config supported; first one wins
             }
         }
-        
         if (!common_params_parse_ex(argc, argv, ctx_arg)) {
             ctx_arg.params = params_org;
             return false;
