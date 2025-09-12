@@ -145,7 +145,6 @@ if (LLAMA_BUILD_TOOLS)
         set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
         set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
         FetchContent_MakeAvailable(yaml-cpp)
-        
         # Suppress all warnings for yaml-cpp to avoid -Werror failures
         if(TARGET yaml-cpp)
             target_compile_options(yaml-cpp PRIVATE -w)
