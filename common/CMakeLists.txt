@@ -2,20 +2,6 @@
 
 find_package(Threads REQUIRED)
 
-find_package(yaml-cpp QUIET)
-if (NOT yaml-cpp_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(yaml-cpp
-        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-        GIT_TAG        0.8.0)
-    
-    set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
-    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
-    
-    FetchContent_MakeAvailable(yaml-cpp)
-endif()
-
 llama_add_compile_flags()
 
 # Build info header
@@ -68,8 +54,6 @@ add_library(${TARGET} STATIC
     chat.h
     common.cpp
     common.h
-    config.cpp
-    config.h
     console.cpp
     console.h
     json-partial.cpp
@@ -149,9 +133,36 @@ if (LLAMA_LLGUIDANCE)
     set(LLAMA_COMMON_EXTRA_LIBS ${LLAMA_COMMON_EXTRA_LIBS} llguidance ${LLGUIDANCE_PLATFORM_LIBS})
 endif ()
 
+if (LLAMA_BUILD_TOOLS)
+    # yaml-cpp for YAML config (CLI-only)
+    find_package(yaml-cpp QUIET)
+    if (NOT yaml-cpp_FOUND)
+        include(FetchContent)
+        FetchContent_Declare(yaml-cpp
+            GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+            GIT_TAG        0.8.0)
+        set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+        set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+        set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(yaml-cpp)
+        
+        # Suppress all warnings for yaml-cpp to avoid -Werror failures
+        if(TARGET yaml-cpp)
+            target_compile_options(yaml-cpp PRIVATE -w)
+        endif()
+    endif()
+
+    target_sources(${TARGET} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.h
+    )
+    target_link_libraries(${TARGET} PRIVATE yaml-cpp)
+    target_compile_definitions(${TARGET} PUBLIC LLAMA_ENABLE_CONFIG_YAML)
+endif()
+
 target_include_directories(${TARGET} PUBLIC . ../vendor)
 target_compile_features   (${TARGET} PUBLIC cxx_std_17)
-target_link_libraries     (${TARGET} PRIVATE ${LLAMA_COMMON_EXTRA_LIBS} yaml-cpp PUBLIC llama Threads::Threads)
+target_link_libraries     (${TARGET} PRIVATE ${LLAMA_COMMON_EXTRA_LIBS} PUBLIC llama Threads::Threads)
 
 
 #

@@ -19,7 +19,7 @@ jobs:
       id: depends
       run: |
         sudo apt-get update
-        sudo apt-get install build-essential cmake
+        sudo apt-get install -y build-essential cmake wget
 
     - name: Build
       id: cmake_build
@@ -27,10 +27,10 @@ jobs:
         cmake -B build -DLLAMA_BUILD_TESTS=ON -DLLAMA_BUILD_TOOLS=ON -DLLAMA_FATAL_WARNINGS=ON -DLLAMA_CURL=OFF
         cmake --build build --config Release -j $(nproc)
 
-    - name: Download tiny model
+    - name: Use existing tiny model
       run: |
-        mkdir -p models
-        wget https://huggingface.co/ggml-org/models/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf -O models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+        # Use the existing tinyllama model that's already in the repo
+        ls -la models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
 
     - name: Test YAML config functionality
       run: |
