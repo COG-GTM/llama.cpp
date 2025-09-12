@@ -9,40 +9,33 @@ on:
 jobs:
   test-coverage:
     runs-on: ubuntu-latest
-    
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    
     - name: Install dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential cmake lcov
-    
     - name: Configure CMake with coverage
       run: |
         mkdir -p build
         cd build
         cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage -g -O0" -DCMAKE_C_FLAGS="--coverage -g -O0" -DGGML_NATIVE=OFF
-    
     - name: Build
       run: |
         cd build
         make -j$(nproc)
-    
     - name: Run tests
       run: |
         cd build
         ctest --output-on-failure --parallel $(nproc)
-    
     - name: Generate coverage report
       run: |
         cd build
         lcov --capture --directory . --output-file coverage.info
         lcov --remove coverage.info '/usr/*' '*/build/*' '*/ggml/src/*' '*/vendor/*' --output-file coverage_filtered.info
         lcov --list coverage_filtered.info
-    
     - name: Check coverage thresholds
       run: |
         cd build
@@ -53,7 +46,6 @@ import re
 def parse_lcov_summary(filename):
     with open(filename, 'r') as f:
         content = f.read()
-    
     # Extract summary from lcov --list output
     lines_match = re.search(r'Total:\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([\d.]+)%', content)
     functions_match = re.search(r'Functions:\s*(\d+)\s*of\s*(\d+)\s*\(([\d.]+)%\)', content)
@@ -78,7 +70,6 @@ try:
     import subprocess
     result = subprocess.run(['lcov', '--list', 'coverage_filtered.info'], 
                           capture_output=True, text=True, check=True)
-    
     # Parse coverage from output
     lines = result.stdout.split('\n')
     line_coverage = 0.0
@@ -118,7 +109,6 @@ except Exception as e:
     # For now, don't fail the build on coverage parsing errors
     # sys.exit(1)
 "
-    
     - name: Upload coverage reports
       uses: actions/upload-artifact@v4
       with:
@@ -127,13 +117,11 @@ except Exception as e:
           build/coverage.info
           build/coverage_filtered.info
       if: always()
-    
     - name: Generate HTML coverage report
       run: |
         cd build
         genhtml coverage_filtered.info --output-directory coverage_html
       if: always()
-    
     - name: Upload HTML coverage report
       uses: actions/upload-artifact@v4
       with:
