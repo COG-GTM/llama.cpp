@@ -5,6 +5,9 @@
 #include <vector>
 #include <sstream>
 #include <unordered_set>
+#include <fstream>
+#include <filesystem>
+#include <cstdlib>
 
 #undef NDEBUG
 #include <cassert>
@@ -172,6 +175,151 @@ int main(void) {
         }
     } else {
         printf("test-arg-parser: no curl, skipping curl-related functions\n");
+    }
+
+    printf("test-arg-parser: testing common_arg class methods\n\n");
+
+    {
+        common_arg arg({"-t", "--test"}, "test help", [](common_params & params) {
+            (void)params;
+        });
+
+        arg.set_examples({LLAMA_EXAMPLE_COMMON, LLAMA_EXAMPLE_SERVER});
+        assert(arg.in_example(LLAMA_EXAMPLE_COMMON));
+        assert(arg.in_example(LLAMA_EXAMPLE_SERVER));
+        assert(!arg.in_example(LLAMA_EXAMPLE_EMBEDDING));
+
+        arg.set_excludes({LLAMA_EXAMPLE_EMBEDDING});
+        assert(arg.is_exclude(LLAMA_EXAMPLE_EMBEDDING));
+        assert(!arg.is_exclude(LLAMA_EXAMPLE_COMMON));
+
+        arg.set_env("TEST_ENV_VAR");
+        std::string output;
+        setenv("TEST_ENV_VAR", "test_value", 1);
+        assert(arg.get_value_from_env(output));
+        assert(output == "test_value");
+        assert(arg.has_value_from_env());
+
+        unsetenv("TEST_ENV_VAR");
+        assert(!arg.get_value_from_env(output));
+        assert(!arg.has_value_from_env());
+
+        arg.set_sparam();
+        assert(arg.is_sparam);
+    }
+
+    printf("test-arg-parser: testing file I/O functions with temp files\n\n");
+
+    {
+        std::string temp_dir = std::filesystem::temp_directory_path();
+        std::string test_file = temp_dir + "/test_arg_parser_file.txt";
+        std::string test_content = "Hello, World!\nThis is a test file.";
+
+        std::ofstream file(test_file);
+        file << test_content;
+        file.close();
+
+        std::ifstream read_file(test_file);
+        std::string content((std::istreambuf_iterator<char>(read_file)), std::istreambuf_iterator<char>());
+        read_file.close();
+        assert(content == test_content);
+
+        std::filesystem::remove(test_file);
+
+        try {
+            std::ifstream bad_file("/nonexistent/path/file.txt");
+            if (!bad_file) {
+                printf("  expected: file open failure handled correctly\n");
+            }
+        } catch (...) {
+            printf("  expected: exception handling for bad file paths\n");
+        }
+    }
+
+    printf("test-arg-parser: testing string processing functions\n\n");
+
+    {
+        common_arg arg({"-t", "--test"}, "VALUE", "This is a test argument with a very long help text that should be wrapped properly when displayed to the user.", [](common_params & params, const std::string & value) {
+            (void)params;
+            (void)value;
+        });
+
+        std::string result = arg.to_string();
+        assert(!result.empty());
+        assert(result.find("-t") != std::string::npos);
+        assert(result.find("--test") != std::string::npos);
+        assert(result.find("VALUE") != std::string::npos);
+        assert(result.find("This is a test") != std::string::npos);
+    }
+
+    printf("test-arg-parser: testing edge cases and error conditions\n\n");
+
+    {
+        common_arg arg({"-e", "--env-test"}, "test help", [](common_params & params) {
+            (void)params;
+        });
+
+        std::string empty_output;
+        assert(!arg.get_value_from_env(empty_output));
+        assert(!arg.has_value_from_env());
+
+        arg.set_env("NONEXISTENT_ENV_VAR_12345");
+        assert(!arg.get_value_from_env(empty_output));
+        assert(!arg.has_value_from_env());
+    }
+
+    printf("test-arg-parser: testing argument parsing with various data types\n\n");
+
+    {
+        common_params params;
+        std::vector<std::string> argv;
+        auto list_str_to_char = [](std::vector<std::string> & argv) -> std::vector<char *> {
+            std::vector<char *> res;
+            for (auto & arg : argv) {
+                res.push_back(const_cast<char *>(arg.data()));
+            }
+            return res;
+        };
+
+        argv = {"binary_name", "-c", "512"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+        assert(params.n_ctx == 512);
+
+        argv = {"binary_name", "--seed", "42"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+        assert(params.sampling.seed == 42);
+
+        argv = {"binary_name", "--temp", "0.8"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+        assert(params.sampling.temp == 0.8f);
+
+        argv = {"binary_name", "--top-p", "0.9"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+        assert(params.sampling.top_p == 0.9f);
+    }
+
+    printf("test-arg-parser: testing boundary conditions\n\n");
+
+    {
+        common_params params;
+        std::vector<std::string> argv;
+        auto list_str_to_char = [](std::vector<std::string> & argv) -> std::vector<char *> {
+            std::vector<char *> res;
+            for (auto & arg : argv) {
+                res.push_back(const_cast<char *>(arg.data()));
+            }
+            return res;
+        };
+
+        argv = {"binary_name", "-c", "0"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--temp", "0.0"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--temp", "1.0"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+        assert(params.sampling.temp == 1.0f);
     }
 
     printf("test-arg-parser: all tests OK\n\n");

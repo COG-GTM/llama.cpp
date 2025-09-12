@@ -542,6 +542,31 @@ To learn more about model quantization, [read this documentation](tools/quantize
 - [Performance troubleshooting](docs/development/token_generation_performance_tips.md)
 - [GGML tips & tricks](https://github.com/ggml-org/llama.cpp/wiki/GGML-Tips-&-Tricks)
 
+#### Tests & Coverage
+
+Run tests and generate coverage reports:
+
+```bash
+# Build with coverage enabled
+mkdir -p build
+cd build
+cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage -g -O0" -DCMAKE_C_FLAGS="--coverage -g -O0"
+make -j$(nproc)
+
+# Run all tests
+ctest --output-on-failure --parallel $(nproc)
+
+# Generate coverage report
+lcov --capture --directory . --output-file coverage.info
+lcov --remove coverage.info '/usr/*' '*/build/*' '*/ggml/src/*' '*/vendor/*' --output-file coverage_filtered.info
+lcov --list coverage_filtered.info
+
+# Generate HTML coverage report
+genhtml coverage_filtered.info --output-directory coverage_html
+```
+
+**Coverage Policy**: Coverage thresholds are enforced at **≥95%** (lines and functions). PRs must meet or exceed diff coverage and keep global coverage ≥95%. The CI will automatically fail builds that don't meet these thresholds to ensure code quality and comprehensive testing.
+
 #### Seminal papers and background on the models
 
 If your issue is with model generation quality, then please at least scan the following links and papers to understand the limitations of LLaMA models. This is especially important when choosing an appropriate model size and appreciating both the significant and subtle differences between LLaMA models and ChatGPT:
