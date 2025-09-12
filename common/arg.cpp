@@ -1341,6 +1341,7 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ));
 
+#ifdef LLAMA_ENABLE_CONFIG_YAML
     add_opt(common_arg(
         {"--config"},
         "<path/to/config.yaml>",
@@ -1348,6 +1349,7 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         [](common_params &, const std::string &) {
         }
     ));
+#endif
     add_opt(common_arg(
         {"--verbose-prompt"},
         string_format("print a verbose prompt before generation (default: %s)", params.verbose_prompt ? "true" : "false"),

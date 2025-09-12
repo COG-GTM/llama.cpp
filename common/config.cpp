@@ -1,3 +1,5 @@
+#ifdef LLAMA_ENABLE_CONFIG_YAML
+
 #include "config.h"
 #include "log.h"
 
@@ -6,6 +8,8 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <cstdint>
+#include <limits>
 
 namespace fs = std::filesystem;
 
@@ -335,3 +339,5 @@ bool common_load_yaml_config(const std::string & path, common_params & params) {
         throw std::invalid_argument("Config loading error: " + std::string(e.what()));
     }
 }
+
+#endif // LLAMA_ENABLE_CONFIG_YAML
