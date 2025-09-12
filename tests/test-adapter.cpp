@@ -252,6 +252,7 @@ static void test_cvec_apply_to() {
         ggml_tensor * input_tensor = create_mock_tensor(512);
 
         ggml_tensor * result = cvec.apply_to(nullptr, input_tensor, 0);
+        (void)result;
         assert(result == input_tensor);
         std::cout << "  ✓ Returns input tensor when no layer tensor available" << std::endl;
     }
@@ -443,6 +444,7 @@ static void test_cvec_boundary_conditions() {
         ggml_tensor * input_tensor = create_mock_tensor(512);
 
         ggml_tensor * result = cvec.apply_to(nullptr, input_tensor, 0);
+        (void)result;
         assert(result == input_tensor);
         std::cout << "  ✓ apply_to returns input tensor when cvec uninitialized" << std::endl;
     }
@@ -452,6 +454,7 @@ static void test_cvec_boundary_conditions() {
         ggml_tensor * input_tensor = create_mock_tensor(512);
 
         ggml_tensor * result = cvec.apply_to(nullptr, input_tensor, 50);
+        (void)result;
         assert(result == input_tensor);
         std::cout << "  ✓ apply_to returns input tensor for high layer index" << std::endl;
     }
@@ -464,6 +467,7 @@ static void test_cvec_apply_functionality() {
         llama_adapter_cvec cvec;
 
         bool result = cvec.apply(*(llama_model*)nullptr, nullptr, 0, 0, 0, 0);
+        (void)result;
         assert(result == true);
         std::cout << "  ✓ apply with nullptr data returns true" << std::endl;
     }
@@ -479,6 +483,7 @@ static void test_lora_weight_edge_cases() {
         float alpha = 32.0f;
         float adapter_scale = 1.0f;
         float actual_scale = weight.get_scale(alpha, adapter_scale);
+        (void)actual_scale;
 
         assert(std::isinf(actual_scale) || std::isnan(actual_scale));
         std::cout << "  ✓ Division by zero rank handled" << std::endl;
@@ -491,6 +496,7 @@ static void test_lora_weight_edge_cases() {
         float alpha = 0.0f;
         float adapter_scale = 2.5f;
         float actual_scale = weight.get_scale(alpha, adapter_scale);
+        (void)actual_scale;
 
         assert(actual_scale == adapter_scale);
         std::cout << "  ✓ Zero alpha defaults to adapter_scale" << std::endl;
@@ -505,6 +511,7 @@ static void test_lora_adapter_advanced() {
 
         ggml_tensor * tensor_with_long_name = create_mock_tensor(1, 1, 1, 1, "very_long_tensor_name_that_exceeds_normal_limits");
         llama_adapter_lora_weight * result = adapter.get_weight(tensor_with_long_name);
+        (void)result;
 
         assert(result == nullptr);
         std::cout << "  ✓ get_weight handles long tensor names" << std::endl;
@@ -545,11 +552,13 @@ static void test_metadata_advanced() {
         char buf[256];
         for (int i = 0; i < 3; ++i) {
             int32_t result = llama_adapter_meta_key_by_index(&adapter, i, buf, sizeof(buf));
+            (void)result;
             assert(result > 0);
             assert(strlen(buf) > 0);
         }
 
         int32_t result = llama_adapter_meta_key_by_index(&adapter, 3, buf, sizeof(buf));
+        (void)result;
         assert(result == -1);
         std::cout << "  ✓ meta_key_by_index boundary testing" << std::endl;
     }
@@ -560,6 +569,7 @@ static void test_metadata_advanced() {
 
         char small_buf[10];
         int32_t result = llama_adapter_meta_key_by_index(&adapter, 0, small_buf, sizeof(small_buf));
+        (void)result;
 
         assert(result > 0);
         assert(strlen(small_buf) < sizeof(small_buf));
@@ -572,6 +582,7 @@ static void test_metadata_advanced() {
 
         char buf[256];
         int32_t result = llama_adapter_meta_val_str(&adapter, "key", buf, sizeof(buf));
+        (void)result;
 
         assert(result > 0);
         assert(strlen(buf) < sizeof(buf));
@@ -589,6 +600,7 @@ static void test_edge_cases() {
         float alpha = 1e-10f;
         float adapter_scale = 1e-10f;
         float actual_scale = weight.get_scale(alpha, adapter_scale);
+        (void)actual_scale;
 
         assert(std::isfinite(actual_scale));
         std::cout << "  ✓ Very small floating point values" << std::endl;
@@ -601,6 +613,7 @@ static void test_edge_cases() {
         float alpha = 1e6f;
         float adapter_scale = 1e6f;
         float actual_scale = weight.get_scale(alpha, adapter_scale);
+        (void)actual_scale;
 
         assert(std::isfinite(actual_scale));
         std::cout << "  ✓ Large floating point values" << std::endl;
@@ -610,6 +623,7 @@ static void test_edge_cases() {
         llama_adapter_cvec cvec;
 
         ggml_tensor * result = cvec.tensor_for(1000000);
+        (void)result;
         assert(result == nullptr);
         std::cout << "  ✓ Very large layer index" << std::endl;
     }
