@@ -2,6 +2,15 @@
 
 find_package(Threads REQUIRED)
 
+find_package(yaml-cpp QUIET)
+if (NOT yaml-cpp_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(yaml-cpp
+        GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+        GIT_TAG        0.8.0)
+    FetchContent_MakeAvailable(yaml-cpp)
+endif()
+
 llama_add_compile_flags()
 
 # Build info header
@@ -54,6 +63,8 @@ add_library(${TARGET} STATIC
     chat.h
     common.cpp
     common.h
+    config.cpp
+    config.h
     console.cpp
     console.h
     json-partial.cpp
@@ -135,7 +146,7 @@ endif ()
 
 target_include_directories(${TARGET} PUBLIC . ../vendor)
 target_compile_features   (${TARGET} PUBLIC cxx_std_17)
-target_link_libraries     (${TARGET} PRIVATE ${LLAMA_COMMON_EXTRA_LIBS} PUBLIC llama Threads::Threads)
+target_link_libraries     (${TARGET} PRIVATE ${LLAMA_COMMON_EXTRA_LIBS} yaml-cpp PUBLIC llama Threads::Threads)
 
 
 #
