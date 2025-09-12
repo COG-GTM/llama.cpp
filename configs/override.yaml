@@ -1,0 +1,9 @@
+model:
+  path: ../models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+n_ctx: 256
+sampling:
+  seed: 42
+  temp: 0.8
+prompt: "Hello from YAML override"
+n_predict: 32
+simple_io: true
