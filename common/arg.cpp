@@ -2,6 +2,7 @@
 
 #include "chat.h"
 #include "common.h"
+#include "config.h"
 #include "gguf.h" // for reading GGUF splits
 #include "json-schema-to-grammar.h"
 #include "log.h"
@@ -1223,6 +1224,19 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
     const common_params params_org = ctx_arg.params; // the example can modify the default params
 
     try {
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "--config") {
+                if (i + 1 >= argc) {
+                    throw std::invalid_argument("error: --config requires a file path");
+                }
+                std::string cfg_path = argv[++i];
+                if (!common_load_yaml_config(cfg_path, ctx_arg.params)) {
+                    throw std::invalid_argument("error: failed to load YAML config: " + cfg_path);
+                }
+                break; // single --config supported; first one wins
+            }
+        }
+        
         if (!common_params_parse_ex(argc, argv, ctx_arg)) {
             ctx_arg.params = params_org;
             return false;
@@ -1315,6 +1329,14 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         "print source-able bash completion script for llama.cpp",
         [](common_params & params) {
             params.completion = true;
+        }
+    ));
+
+    add_opt(common_arg(
+        {"--config"},
+        "<path/to/config.yaml>",
+        "Load parameters from a YAML config file; flags passed on the command line override values from the YAML file.",
+        [](common_params &, const std::string &) {
         }
     ));
     add_opt(common_arg(
