@@ -6,7 +6,7 @@ LLAMA_CLI="./llama-cli"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 CONFIG_FILE="$REPO_ROOT/configs/minimal.yaml"
-MODEL_PATH="$REPO_ROOT/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
+MODEL_PATH="$REPO_ROOT/models/stories15M-q4_0.gguf"
 
 if [ ! -f "$MODEL_PATH" ]; then
     echo "Model file not found: $MODEL_PATH"

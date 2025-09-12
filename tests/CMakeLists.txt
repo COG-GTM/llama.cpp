@@ -191,7 +191,7 @@ endif()
 llama_build_and_test(test-thread-safety.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 128 -c 256 -ub 32 -np 4 -t 2)
 
 # YAML config integration tests
-if(EXISTS ${PROJECT_SOURCE_DIR}/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf)
+if(EXISTS ${PROJECT_SOURCE_DIR}/models/stories15M-q4_0.gguf)
     llama_test_cmd(
         ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
         NAME test-config-yaml-cli-only

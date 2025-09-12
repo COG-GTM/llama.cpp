@@ -19,7 +19,16 @@ jobs:
       id: depends
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential cmake wget
+        sudo apt-get install -y build-essential cmake git-lfs
+        git lfs install
+
+    - name: Download tiny model (stories15M)
+      run: |
+        mkdir -p models
+        git clone https://huggingface.co/ggml-org/models hf-models
+        ls -la hf-models/tinyllamas/
+        cp hf-models/tinyllamas/stories15M-q4_0.gguf models/stories15M-q4_0.gguf
+        ls -lh models/
 
     - name: Build
       id: cmake_build
@@ -27,12 +36,7 @@ jobs:
         cmake -B build -DLLAMA_BUILD_TESTS=ON -DLLAMA_BUILD_TOOLS=ON -DLLAMA_FATAL_WARNINGS=ON -DLLAMA_CURL=OFF
         cmake --build build --config Release -j $(nproc)
 
-    - name: Use existing tiny model
-      run: |
-        # Use the existing tinyllama model that's already in the repo
-        ls -la models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
-
     - name: Test YAML config functionality
       run: |
         cd build
-        ctest -R "test-config-yaml" --verbose --timeout 300
+        ctest -R "test-config-yaml|test-config-yaml-cli-.*|test-config-yaml-parity" --output-on-failure --timeout 300
