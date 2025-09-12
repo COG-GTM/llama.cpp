@@ -184,8 +184,33 @@ llama_build_and_test(test-chat-template.cpp)
 llama_build_and_test(test-json-partial.cpp)
 llama_build_and_test(test-log.cpp)
 llama_build_and_test(test-regex-partial.cpp)
+llama_build_and_test(test-config-yaml.cpp)
 
 llama_build_and_test(test-thread-safety.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 128 -c 256 -ub 32 -np 4 -t 2)
+
+# YAML config integration tests
+if(EXISTS ${PROJECT_SOURCE_DIR}/models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf)
+    llama_test_cmd(
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
+        NAME test-config-yaml-cli-only
+        ARGS --config ${PROJECT_SOURCE_DIR}/configs/minimal.yaml -no-cnv
+    )
+    
+    llama_test_cmd(
+        ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/llama-cli
+        NAME test-config-yaml-cli-overrides
+        ARGS --config ${PROJECT_SOURCE_DIR}/configs/override.yaml -n 8 --temp 0.0 -no-cnv
+    )
+    
+    # Parity test - compare YAML config vs equivalent flags
+    add_test(
+        NAME test-config-yaml-parity
+        WORKING_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+        COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/test-yaml-parity.sh
+    )
+    set_property(TEST test-config-yaml-parity PROPERTY LABELS main)
+    set_property(TEST test-config-yaml-parity PROPERTY ENVIRONMENT "PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}")
+endif()
 
 # this fails on windows (github hosted runner) due to curl DLL not found (exit code 0xc0000135)
 if (NOT WIN32)
