@@ -25,10 +25,9 @@ jobs:
     - name: Download tiny model (stories15M)
       run: |
         mkdir -p models
-        git clone https://huggingface.co/ggml-org/models hf-models
-        ls -la hf-models/tinyllamas/
-        cp hf-models/tinyllamas/stories15M-q4_0.gguf models/stories15M-q4_0.gguf
-        ls -lh models/
+        # Download only the specific model file we need (19MB) to avoid disk space issues
+        wget -q "https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories15M-q4_0.gguf" -O models/stories15M-q4_0.gguf
+        ls -lh models/stories15M-q4_0.gguf
 
     - name: Build
       id: cmake_build
