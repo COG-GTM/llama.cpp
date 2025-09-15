@@ -13,7 +13,7 @@ static void write_test_yaml(const std::string& filename, const std::string& cont
 
 static void test_basic_yaml_parsing() {
     std::cout << "Testing basic YAML parsing..." << std::endl;
-    
+
     const std::string yaml_content = R"(
 n_predict: 100
 n_ctx: 2048
@@ -27,13 +27,13 @@ sampling:
   top_k: 50
   top_p: 0.9
 )";
-    
+
     write_test_yaml("test_basic.yaml", yaml_content);
-    
+
     common_params params;
     const char* argv[] = {"test", "--config", "test_basic.yaml"};
     int argc = 3;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
@@ -46,14 +46,14 @@ sampling:
     assert(params.sampling.temp == 0.7f);
     assert(params.sampling.top_k == 50);
     assert(params.sampling.top_p == 0.9f);
-    
+
     std::filesystem::remove("test_basic.yaml");
     std::cout << "Basic YAML parsing test passed!" << std::endl;
 }
 
 static void test_cli_override_yaml() {
     std::cout << "Testing CLI override of YAML values..." << std::endl;
-    
+
     const std::string yaml_content = R"(
 n_predict: 100
 n_ctx: 2048
@@ -61,13 +61,13 @@ prompt: "YAML prompt"
 sampling:
   temp: 0.7
 )";
-    
+
     write_test_yaml("test_override.yaml", yaml_content);
-    
+
     common_params params;
     const char* argv[] = {"test", "--config", "test_override.yaml", "-n", "200", "-p", "CLI prompt", "--temp", "0.5"};
     int argc = 8;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
@@ -75,67 +75,67 @@ sampling:
     assert(params.n_ctx == 2048); // YAML value should remain
     assert(params.prompt == "CLI prompt"); // CLI should override YAML
     assert(params.sampling.temp == 0.5f); // CLI should override YAML
-    
+
     std::filesystem::remove("test_override.yaml");
     std::cout << "CLI override test passed!" << std::endl;
 }
 
 static void test_invalid_yaml() {
     std::cout << "Testing invalid YAML handling..." << std::endl;
-    
+
     const std::string invalid_yaml = R"(
 n_predict: 100
 invalid_yaml: [unclosed array
 )";
-    
+
     write_test_yaml("test_invalid.yaml", invalid_yaml);
-    
+
     common_params params;
     const char* argv[] = {"test", "--config", "test_invalid.yaml"};
     int argc = 3;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == false); // Should fail with invalid YAML
     (void)result; // Suppress unused variable warning
-    
+
     std::filesystem::remove("test_invalid.yaml");
     std::cout << "Invalid YAML test passed!" << std::endl;
 }
 
 static void test_missing_config_file() {
     std::cout << "Testing missing config file handling..." << std::endl;
-    
+
     common_params params;
     const char* argv[] = {"test", "--config", "nonexistent.yaml"};
     int argc = 3;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == false); // Should fail with missing file
     (void)result; // Suppress unused variable warning
-    
+
     std::cout << "Missing config file test passed!" << std::endl;
 }
 
 static void test_backward_compatibility() {
     std::cout << "Testing backward compatibility..." << std::endl;
-    
+
     common_params params;
     const char* argv[] = {"test", "-n", "150", "-p", "Test prompt", "--temp", "0.8"};
     int argc = 7;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
     assert(params.n_predict == 150);
     assert(params.prompt == "Test prompt");
     assert(params.sampling.temp == 0.8f);
-    
+
     std::cout << "Backward compatibility test passed!" << std::endl;
 }
 
 static void test_complex_yaml_structure() {
     std::cout << "Testing complex YAML structure..." << std::endl;
-    
+
     const std::string complex_yaml = R"(
 n_predict: 200
 n_ctx: 4096
@@ -161,13 +161,13 @@ antiprompt:
   - "User:"
   - "Assistant:"
 )";
-    
+
     write_test_yaml("test_complex.yaml", complex_yaml);
-    
+
     common_params params;
     const char* argv[] = {"test", "--config", "test_complex.yaml"};
     int argc = 3;
-    
+
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
@@ -189,14 +189,14 @@ antiprompt:
     assert(params.antiprompt.size() == 2);
     assert(params.antiprompt[0] == "User:");
     assert(params.antiprompt[1] == "Assistant:");
-    
+
     std::filesystem::remove("test_complex.yaml");
     std::cout << "Complex YAML structure test passed!" << std::endl;
 }
 
 int main() {
     std::cout << "Running YAML configuration tests..." << std::endl;
-    
+
     try {
         test_basic_yaml_parsing();
         test_cli_override_yaml();
@@ -204,7 +204,7 @@ int main() {
         test_missing_config_file();
         test_backward_compatibility();
         test_complex_yaml_structure();
-        
+
         std::cout << "All YAML configuration tests passed!" << std::endl;
         return 0;
     } catch (const std::exception& e) {

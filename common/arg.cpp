@@ -75,7 +75,7 @@ static void parse_yaml_sampling(const YAML::Node& node, common_params_sampling& 
     if (node["timing_per_token"]) sampling.timing_per_token = node["timing_per_token"].as<bool>();
     if (node["grammar"]) sampling.grammar = node["grammar"].as<std::string>();
     if (node["grammar_lazy"]) sampling.grammar_lazy = node["grammar_lazy"].as<bool>();
-    
+
     if (node["dry_sequence_breakers"] && node["dry_sequence_breakers"].IsSequence()) {
         sampling.dry_sequence_breakers.clear();
         for (const auto& breaker : node["dry_sequence_breakers"]) {
@@ -145,7 +145,7 @@ static void parse_yaml_diffusion(const YAML::Node& node, common_params_diffusion
 static bool load_yaml_config(const std::string& config_path, common_params& params) {
     try {
         YAML::Node config = YAML::LoadFile(config_path);
-        
+
         // Parse main parameters
         if (config["n_predict"]) params.n_predict = config["n_predict"].as<int32_t>();
         if (config["n_ctx"]) params.n_ctx = config["n_ctx"].as<int32_t>();
@@ -167,7 +167,7 @@ static bool load_yaml_config(const std::string& config_path, common_params& para
         if (config["yarn_orig_ctx"]) params.yarn_orig_ctx = config["yarn_orig_ctx"].as<int32_t>();
         if (config["n_gpu_layers"]) params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
         if (config["main_gpu"]) params.main_gpu = config["main_gpu"].as<int32_t>();
-        
+
         // Parse string parameters
         if (config["model_alias"]) params.model_alias = config["model_alias"].as<std::string>();
         if (config["hf_token"]) params.hf_token = config["hf_token"].as<std::string>();
@@ -180,18 +180,18 @@ static bool load_yaml_config(const std::string& config_path, common_params& para
         if (config["lookup_cache_static"]) params.lookup_cache_static = config["lookup_cache_static"].as<std::string>();
         if (config["lookup_cache_dynamic"]) params.lookup_cache_dynamic = config["lookup_cache_dynamic"].as<std::string>();
         if (config["logits_file"]) params.logits_file = config["logits_file"].as<std::string>();
-        
+
         // Parse boolean parameters
         if (config["lora_init_without_apply"]) params.lora_init_without_apply = config["lora_init_without_apply"].as<bool>();
         if (config["offline"]) params.offline = config["offline"].as<bool>();
-        
+
         // Parse integer parameters
         if (config["verbosity"]) params.verbosity = config["verbosity"].as<int32_t>();
         if (config["control_vector_layer_start"]) params.control_vector_layer_start = config["control_vector_layer_start"].as<int32_t>();
         if (config["control_vector_layer_end"]) params.control_vector_layer_end = config["control_vector_layer_end"].as<int32_t>();
         if (config["ppl_stride"]) params.ppl_stride = config["ppl_stride"].as<int32_t>();
         if (config["ppl_output_type"]) params.ppl_output_type = config["ppl_output_type"].as<int32_t>();
-        
+
         // Parse array parameters
         if (config["in_files"] && config["in_files"].IsSequence()) {
             params.in_files.clear();
@@ -199,34 +199,34 @@ static bool load_yaml_config(const std::string& config_path, common_params& para
                 params.in_files.push_back(file.as<std::string>());
             }
         }
-        
+
         if (config["antiprompt"] && config["antiprompt"].IsSequence()) {
             params.antiprompt.clear();
             for (const auto& prompt : config["antiprompt"]) {
                 params.antiprompt.push_back(prompt.as<std::string>());
             }
         }
-        
+
         if (config["sampling"]) {
             parse_yaml_sampling(config["sampling"], params.sampling);
         }
-        
+
         if (config["model"]) {
             parse_yaml_model(config["model"], params.model);
         }
-        
+
         if (config["speculative"]) {
             parse_yaml_speculative(config["speculative"], params.speculative);
         }
-        
+
         if (config["vocoder"]) {
             parse_yaml_vocoder(config["vocoder"], params.vocoder);
         }
-        
+
         if (config["diffusion"]) {
             parse_yaml_diffusion(config["diffusion"], params.diffusion);
         }
-        
+
         return true;
     } catch (const YAML::Exception& e) {
         fprintf(stderr, "YAML parsing error: %s\n", e.what());
@@ -1429,7 +1429,7 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
                 break;
             }
         }
-        
+
         if (!common_params_parse_ex(argc, argv, ctx_arg)) {
             ctx_arg.params = params_org;
             return false;

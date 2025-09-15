@@ -14,7 +14,7 @@ struct TestCase {
 
 static void test_cli_args_without_yaml() {
     std::cout << "Testing CLI arguments without YAML..." << std::endl;
-    
+
     std::vector<TestCase> test_cases = {
         {{"test", "-n", "100"}, "Basic n_predict"},
         {{"test", "-p", "Hello world"}, "Basic prompt"},
@@ -27,33 +27,33 @@ static void test_cli_args_without_yaml() {
         {{"test", "-n", "50", "-p", "Test", "--temp", "0.7"}, "Multiple arguments"},
         {{"test", "--help"}, "Help flag (should exit)"},
     };
-    
+
     for (const auto& test_case : test_cases) {
         if (test_case.description == "Help flag (should exit)") {
             continue;
         }
-        
+
         std::cout << "  Testing: " << test_case.description << std::endl;
-        
+
         common_params params;
         std::vector<char*> argv;
         for (const auto& arg : test_case.args) {
             argv.push_back(const_cast<char*>(arg.c_str()));
         }
-        
+
         bool result = common_params_parse(argv.size(), argv.data(), params, LLAMA_EXAMPLE_COMMON);
-        
+
         if (!result && test_case.description != "Help flag (should exit)") {
             std::cout << "    Warning: " << test_case.description << " failed to parse" << std::endl;
         }
     }
-    
+
     std::cout << "CLI arguments without YAML test completed!" << std::endl;
 }
 
 static void test_equivalent_yaml_and_cli() {
     std::cout << "Testing equivalent YAML and CLI produce same results..." << std::endl;
-    
+
     std::ofstream yaml_file("equivalent_test.yaml");
     yaml_file << R"(
 n_predict: 100
@@ -68,16 +68,16 @@ sampling:
   penalty_repeat: 1.1
 )";
     yaml_file.close();
-    
+
     common_params yaml_params;
     const char* yaml_argv[] = {"test", "--config", "equivalent_test.yaml"};
     bool yaml_result = common_params_parse(3, const_cast<char**>(yaml_argv), yaml_params, LLAMA_EXAMPLE_COMMON);
-    
+
     common_params cli_params;
     const char* cli_argv[] = {
-        "test", 
+        "test",
         "-n", "100",
-        "--ctx-size", "2048", 
+        "--ctx-size", "2048",
         "-b", "512",
         "-p", "Test prompt",
         "-s", "42",
@@ -87,12 +87,12 @@ sampling:
         "--repeat-penalty", "1.1"
     };
     bool cli_result = common_params_parse(17, const_cast<char**>(cli_argv), cli_params, LLAMA_EXAMPLE_COMMON);
-    
+
     assert(yaml_result == true);
     assert(cli_result == true);
     (void)yaml_result; // Suppress unused variable warning
     (void)cli_result; // Suppress unused variable warning
-    
+
     assert(yaml_params.n_predict == cli_params.n_predict);
     assert(yaml_params.n_ctx == cli_params.n_ctx);
     assert(yaml_params.n_batch == cli_params.n_batch);
@@ -102,20 +102,20 @@ sampling:
     assert(yaml_params.sampling.top_k == cli_params.sampling.top_k);
     assert(yaml_params.sampling.top_p == cli_params.sampling.top_p);
     assert(yaml_params.sampling.penalty_repeat == cli_params.sampling.penalty_repeat);
-    
+
     std::filesystem::remove("equivalent_test.yaml");
     std::cout << "Equivalent YAML and CLI test passed!" << std::endl;
 }
 
 static void test_all_major_cli_options() {
     std::cout << "Testing all major CLI options still work..." << std::endl;
-    
+
     struct CliTest {
         std::vector<std::string> args;
         std::string param_name;
         bool should_succeed;
     };
-    
+
     std::vector<CliTest> cli_tests = {
         {{"test", "-m", "model.gguf"}, "model path", true},
         {{"test", "-n", "200"}, "n_predict", true},
@@ -133,35 +133,35 @@ static void test_all_major_cli_options() {
         {{"test", "--color"}, "color output", true},
         {{"test", "--verbose"}, "verbose mode", true},
     };
-    
+
     for (const auto& test : cli_tests) {
         std::cout << "  Testing: " << test.param_name << std::endl;
-        
+
         common_params params;
         std::vector<char*> argv;
         for (const auto& arg : test.args) {
             argv.push_back(const_cast<char*>(arg.c_str()));
         }
-        
+
         bool result = common_params_parse(argv.size(), argv.data(), params, LLAMA_EXAMPLE_COMMON);
-        
+
         if (result != test.should_succeed) {
-            std::cout << "    Unexpected result for " << test.param_name 
+            std::cout << "    Unexpected result for " << test.param_name
                       << ": expected " << test.should_succeed << ", got " << result << std::endl;
         }
     }
-    
+
     std::cout << "Major CLI options test completed!" << std::endl;
 }
 
 int main() {
     std::cout << "Running backward compatibility tests..." << std::endl;
-    
+
     try {
         test_cli_args_without_yaml();
         test_equivalent_yaml_and_cli();
         test_all_major_cli_options();
-        
+
         std::cout << "All backward compatibility tests completed!" << std::endl;
         return 0;
     } catch (const std::exception& e) {
