@@ -7,6 +7,8 @@
 #include "log.h"
 #include "sampling.h"
 
+#include <yaml-cpp/yaml.h>
+
 // fix problem with std::min and std::max
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
@@ -40,6 +42,200 @@
 #endif
 
 using json = nlohmann::ordered_json;
+
+// YAML configuration parsing functions
+static void parse_yaml_sampling(const YAML::Node& node, common_params_sampling& sampling) {
+    if (node["seed"]) sampling.seed = node["seed"].as<uint32_t>();
+    if (node["n_prev"]) sampling.n_prev = node["n_prev"].as<int32_t>();
+    if (node["n_probs"]) sampling.n_probs = node["n_probs"].as<int32_t>();
+    if (node["min_keep"]) sampling.min_keep = node["min_keep"].as<int32_t>();
+    if (node["top_k"]) sampling.top_k = node["top_k"].as<int32_t>();
+    if (node["top_p"]) sampling.top_p = node["top_p"].as<float>();
+    if (node["min_p"]) sampling.min_p = node["min_p"].as<float>();
+    if (node["xtc_probability"]) sampling.xtc_probability = node["xtc_probability"].as<float>();
+    if (node["xtc_threshold"]) sampling.xtc_threshold = node["xtc_threshold"].as<float>();
+    if (node["typ_p"]) sampling.typ_p = node["typ_p"].as<float>();
+    if (node["temp"]) sampling.temp = node["temp"].as<float>();
+    if (node["dynatemp_range"]) sampling.dynatemp_range = node["dynatemp_range"].as<float>();
+    if (node["dynatemp_exponent"]) sampling.dynatemp_exponent = node["dynatemp_exponent"].as<float>();
+    if (node["penalty_last_n"]) sampling.penalty_last_n = node["penalty_last_n"].as<int32_t>();
+    if (node["penalty_repeat"]) sampling.penalty_repeat = node["penalty_repeat"].as<float>();
+    if (node["penalty_freq"]) sampling.penalty_freq = node["penalty_freq"].as<float>();
+    if (node["penalty_present"]) sampling.penalty_present = node["penalty_present"].as<float>();
+    if (node["dry_multiplier"]) sampling.dry_multiplier = node["dry_multiplier"].as<float>();
+    if (node["dry_base"]) sampling.dry_base = node["dry_base"].as<float>();
+    if (node["dry_allowed_length"]) sampling.dry_allowed_length = node["dry_allowed_length"].as<int32_t>();
+    if (node["dry_penalty_last_n"]) sampling.dry_penalty_last_n = node["dry_penalty_last_n"].as<int32_t>();
+    if (node["mirostat"]) sampling.mirostat = node["mirostat"].as<int32_t>();
+    if (node["top_n_sigma"]) sampling.top_n_sigma = node["top_n_sigma"].as<float>();
+    if (node["mirostat_tau"]) sampling.mirostat_tau = node["mirostat_tau"].as<float>();
+    if (node["mirostat_eta"]) sampling.mirostat_eta = node["mirostat_eta"].as<float>();
+    if (node["ignore_eos"]) sampling.ignore_eos = node["ignore_eos"].as<bool>();
+    if (node["no_perf"]) sampling.no_perf = node["no_perf"].as<bool>();
+    if (node["timing_per_token"]) sampling.timing_per_token = node["timing_per_token"].as<bool>();
+    if (node["grammar"]) sampling.grammar = node["grammar"].as<std::string>();
+    if (node["grammar_lazy"]) sampling.grammar_lazy = node["grammar_lazy"].as<bool>();
+    
+    if (node["dry_sequence_breakers"] && node["dry_sequence_breakers"].IsSequence()) {
+        sampling.dry_sequence_breakers.clear();
+        for (const auto& breaker : node["dry_sequence_breakers"]) {
+            sampling.dry_sequence_breakers.push_back(breaker.as<std::string>());
+        }
+    }
+}
+
+static void parse_yaml_model(const YAML::Node& node, common_params_model& model) {
+    if (node["path"]) model.path = node["path"].as<std::string>();
+    if (node["url"]) model.url = node["url"].as<std::string>();
+    if (node["hf_repo"]) model.hf_repo = node["hf_repo"].as<std::string>();
+    if (node["hf_file"]) model.hf_file = node["hf_file"].as<std::string>();
+}
+
+static void parse_yaml_speculative(const YAML::Node& node, common_params_speculative& spec) {
+    if (node["n_ctx"]) spec.n_ctx = node["n_ctx"].as<int32_t>();
+    if (node["n_max"]) spec.n_max = node["n_max"].as<int32_t>();
+    if (node["n_min"]) spec.n_min = node["n_min"].as<int32_t>();
+    if (node["n_gpu_layers"]) spec.n_gpu_layers = node["n_gpu_layers"].as<int32_t>();
+    if (node["p_split"]) spec.p_split = node["p_split"].as<float>();
+    if (node["p_min"]) spec.p_min = node["p_min"].as<float>();
+    if (node["cache_type_k"]) {
+        std::string cache_type = node["cache_type_k"].as<std::string>();
+        if (cache_type == "f16") spec.cache_type_k = GGML_TYPE_F16;
+        else if (cache_type == "f32") spec.cache_type_k = GGML_TYPE_F32;
+        else if (cache_type == "q4_0") spec.cache_type_k = GGML_TYPE_Q4_0;
+        else if (cache_type == "q4_1") spec.cache_type_k = GGML_TYPE_Q4_1;
+        else if (cache_type == "q5_0") spec.cache_type_k = GGML_TYPE_Q5_0;
+        else if (cache_type == "q5_1") spec.cache_type_k = GGML_TYPE_Q5_1;
+        else if (cache_type == "q8_0") spec.cache_type_k = GGML_TYPE_Q8_0;
+    }
+    if (node["cache_type_v"]) {
+        std::string cache_type = node["cache_type_v"].as<std::string>();
+        if (cache_type == "f16") spec.cache_type_v = GGML_TYPE_F16;
+        else if (cache_type == "f32") spec.cache_type_v = GGML_TYPE_F32;
+        else if (cache_type == "q4_0") spec.cache_type_v = GGML_TYPE_Q4_0;
+        else if (cache_type == "q4_1") spec.cache_type_v = GGML_TYPE_Q4_1;
+        else if (cache_type == "q5_0") spec.cache_type_v = GGML_TYPE_Q5_0;
+        else if (cache_type == "q5_1") spec.cache_type_v = GGML_TYPE_Q5_1;
+        else if (cache_type == "q8_0") spec.cache_type_v = GGML_TYPE_Q8_0;
+    }
+    if (node["model"]) {
+        parse_yaml_model(node["model"], spec.model);
+    }
+}
+
+static void parse_yaml_vocoder(const YAML::Node& node, common_params_vocoder& vocoder) {
+    if (node["speaker_file"]) vocoder.speaker_file = node["speaker_file"].as<std::string>();
+    if (node["use_guide_tokens"]) vocoder.use_guide_tokens = node["use_guide_tokens"].as<bool>();
+    if (node["model"]) {
+        parse_yaml_model(node["model"], vocoder.model);
+    }
+}
+
+static void parse_yaml_diffusion(const YAML::Node& node, common_params_diffusion& diffusion) {
+    if (node["steps"]) diffusion.steps = node["steps"].as<int32_t>();
+    if (node["visual_mode"]) diffusion.visual_mode = node["visual_mode"].as<bool>();
+    if (node["eps"]) diffusion.eps = node["eps"].as<float>();
+    if (node["block_length"]) diffusion.block_length = node["block_length"].as<int32_t>();
+    if (node["algorithm"]) diffusion.algorithm = node["algorithm"].as<int32_t>();
+    if (node["alg_temp"]) diffusion.alg_temp = node["alg_temp"].as<float>();
+    if (node["cfg_scale"]) diffusion.cfg_scale = node["cfg_scale"].as<float>();
+    if (node["add_gumbel_noise"]) diffusion.add_gumbel_noise = node["add_gumbel_noise"].as<bool>();
+}
+
+static bool load_yaml_config(const std::string& config_path, common_params& params) {
+    try {
+        YAML::Node config = YAML::LoadFile(config_path);
+        
+        // Parse main parameters
+        if (config["n_predict"]) params.n_predict = config["n_predict"].as<int32_t>();
+        if (config["n_ctx"]) params.n_ctx = config["n_ctx"].as<int32_t>();
+        if (config["n_batch"]) params.n_batch = config["n_batch"].as<int32_t>();
+        if (config["n_ubatch"]) params.n_ubatch = config["n_ubatch"].as<int32_t>();
+        if (config["n_keep"]) params.n_keep = config["n_keep"].as<int32_t>();
+        if (config["n_chunks"]) params.n_chunks = config["n_chunks"].as<int32_t>();
+        if (config["n_parallel"]) params.n_parallel = config["n_parallel"].as<int32_t>();
+        if (config["n_sequences"]) params.n_sequences = config["n_sequences"].as<int32_t>();
+        if (config["grp_attn_n"]) params.grp_attn_n = config["grp_attn_n"].as<int32_t>();
+        if (config["grp_attn_w"]) params.grp_attn_w = config["grp_attn_w"].as<int32_t>();
+        if (config["n_print"]) params.n_print = config["n_print"].as<int32_t>();
+        if (config["rope_freq_base"]) params.rope_freq_base = config["rope_freq_base"].as<float>();
+        if (config["rope_freq_scale"]) params.rope_freq_scale = config["rope_freq_scale"].as<float>();
+        if (config["yarn_ext_factor"]) params.yarn_ext_factor = config["yarn_ext_factor"].as<float>();
+        if (config["yarn_attn_factor"]) params.yarn_attn_factor = config["yarn_attn_factor"].as<float>();
+        if (config["yarn_beta_fast"]) params.yarn_beta_fast = config["yarn_beta_fast"].as<float>();
+        if (config["yarn_beta_slow"]) params.yarn_beta_slow = config["yarn_beta_slow"].as<float>();
+        if (config["yarn_orig_ctx"]) params.yarn_orig_ctx = config["yarn_orig_ctx"].as<int32_t>();
+        if (config["n_gpu_layers"]) params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
+        if (config["main_gpu"]) params.main_gpu = config["main_gpu"].as<int32_t>();
+        
+        // Parse string parameters
+        if (config["model_alias"]) params.model_alias = config["model_alias"].as<std::string>();
+        if (config["hf_token"]) params.hf_token = config["hf_token"].as<std::string>();
+        if (config["prompt"]) params.prompt = config["prompt"].as<std::string>();
+        if (config["system_prompt"]) params.system_prompt = config["system_prompt"].as<std::string>();
+        if (config["prompt_file"]) params.prompt_file = config["prompt_file"].as<std::string>();
+        if (config["path_prompt_cache"]) params.path_prompt_cache = config["path_prompt_cache"].as<std::string>();
+        if (config["input_prefix"]) params.input_prefix = config["input_prefix"].as<std::string>();
+        if (config["input_suffix"]) params.input_suffix = config["input_suffix"].as<std::string>();
+        if (config["lookup_cache_static"]) params.lookup_cache_static = config["lookup_cache_static"].as<std::string>();
+        if (config["lookup_cache_dynamic"]) params.lookup_cache_dynamic = config["lookup_cache_dynamic"].as<std::string>();
+        if (config["logits_file"]) params.logits_file = config["logits_file"].as<std::string>();
+        
+        // Parse boolean parameters
+        if (config["lora_init_without_apply"]) params.lora_init_without_apply = config["lora_init_without_apply"].as<bool>();
+        if (config["offline"]) params.offline = config["offline"].as<bool>();
+        
+        // Parse integer parameters
+        if (config["verbosity"]) params.verbosity = config["verbosity"].as<int32_t>();
+        if (config["control_vector_layer_start"]) params.control_vector_layer_start = config["control_vector_layer_start"].as<int32_t>();
+        if (config["control_vector_layer_end"]) params.control_vector_layer_end = config["control_vector_layer_end"].as<int32_t>();
+        if (config["ppl_stride"]) params.ppl_stride = config["ppl_stride"].as<int32_t>();
+        if (config["ppl_output_type"]) params.ppl_output_type = config["ppl_output_type"].as<int32_t>();
+        
+        // Parse array parameters
+        if (config["in_files"] && config["in_files"].IsSequence()) {
+            params.in_files.clear();
+            for (const auto& file : config["in_files"]) {
+                params.in_files.push_back(file.as<std::string>());
+            }
+        }
+        
+        if (config["antiprompt"] && config["antiprompt"].IsSequence()) {
+            params.antiprompt.clear();
+            for (const auto& prompt : config["antiprompt"]) {
+                params.antiprompt.push_back(prompt.as<std::string>());
+            }
+        }
+        
+        if (config["sampling"]) {
+            parse_yaml_sampling(config["sampling"], params.sampling);
+        }
+        
+        if (config["model"]) {
+            parse_yaml_model(config["model"], params.model);
+        }
+        
+        if (config["speculative"]) {
+            parse_yaml_speculative(config["speculative"], params.speculative);
+        }
+        
+        if (config["vocoder"]) {
+            parse_yaml_vocoder(config["vocoder"], params.vocoder);
+        }
+        
+        if (config["diffusion"]) {
+            parse_yaml_diffusion(config["diffusion"], params.diffusion);
+        }
+        
+        return true;
+    } catch (const YAML::Exception& e) {
+        fprintf(stderr, "YAML parsing error: %s\n", e.what());
+        return false;
+    } catch (const std::exception& e) {
+        fprintf(stderr, "Error loading YAML config: %s\n", e.what());
+        return false;
+    }
+}
 
 std::initializer_list<enum llama_example> mmproj_examples = {
     LLAMA_EXAMPLE_MTMD,
@@ -1223,6 +1419,17 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
     const common_params params_org = ctx_arg.params; // the example can modify the default params
 
     try {
+        for (int i = 1; i < argc; i++) {
+            if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
+                if (!load_yaml_config(argv[i + 1], ctx_arg.params)) {
+                    fprintf(stderr, "Failed to load YAML config: %s\n", argv[i + 1]);
+                    ctx_arg.params = params_org;
+                    return false;
+                }
+                break;
+            }
+        }
+        
         if (!common_params_parse_ex(argc, argv, ctx_arg)) {
             ctx_arg.params = params_org;
             return false;
@@ -1293,6 +1500,15 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     };
 
+
+    add_opt(common_arg(
+        {"--config"},
+        "FNAME",
+        "path to YAML configuration file",
+        [](common_params & params, const std::string & value) {
+            params.config_file = value;
+        }
+    ));
 
     add_opt(common_arg(
         {"-h", "--help", "--usage"},

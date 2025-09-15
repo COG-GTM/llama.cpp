@@ -348,6 +348,8 @@ struct common_params {
     int32_t control_vector_layer_end   = -1; // layer range for control vector
     bool    offline                    = false;
 
+    std::string config_file            = ""; // path to YAML configuration file
+
     int32_t ppl_stride      = 0;     // stride for perplexity calculations. If left at 0, the pre-existing approach will be used.
     int32_t ppl_output_type = 0;     // = 0 -> ppl output is as usual, = 1 -> ppl output is num_tokens, ppl, one per line
                                      //                                       (which is more convenient to use for plotting)

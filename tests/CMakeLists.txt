@@ -190,6 +190,10 @@ llama_build_and_test(test-thread-safety.cpp ARGS -hf ggml-org/models -hff tinyll
 # this fails on windows (github hosted runner) due to curl DLL not found (exit code 0xc0000135)
 if (NOT WIN32)
     llama_build_and_test(test-arg-parser.cpp)
+
+# YAML configuration tests
+llama_build_and_test(test-yaml-config.cpp)
+llama_build_and_test(test-yaml-backward-compat.cpp)
 endif()
 
 if (NOT LLAMA_SANITIZE_ADDRESS)
