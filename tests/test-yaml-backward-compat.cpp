@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <cmath>
 
 struct TestCase {
     std::vector<std::string> args;
@@ -75,9 +76,9 @@ sampling:
 
     common_params cli_params;
     const char* cli_argv[] = {
-        "test",
+        "test", 
         "-n", "100",
-        "--ctx-size", "2048",
+        "-c", "2048", 
         "-b", "512",
         "-p", "Test prompt",
         "-s", "42",
@@ -86,7 +87,9 @@ sampling:
         "--top-p", "0.9",
         "--repeat-penalty", "1.1"
     };
-    bool cli_result = common_params_parse(17, const_cast<char**>(cli_argv), cli_params, LLAMA_EXAMPLE_COMMON);
+    const int cli_argc = sizeof(cli_argv) / sizeof(cli_argv[0]);
+    
+    bool cli_result = common_params_parse(cli_argc, const_cast<char**>(cli_argv), cli_params, LLAMA_EXAMPLE_COMMON);
 
     assert(yaml_result == true);
     assert(cli_result == true);
@@ -101,7 +104,10 @@ sampling:
     assert(yaml_params.sampling.temp == cli_params.sampling.temp);
     assert(yaml_params.sampling.top_k == cli_params.sampling.top_k);
     assert(yaml_params.sampling.top_p == cli_params.sampling.top_p);
-    assert(yaml_params.sampling.penalty_repeat == cli_params.sampling.penalty_repeat);
+    
+    
+    const float epsilon = 1e-6f;
+    assert(std::abs(yaml_params.sampling.penalty_repeat - cli_params.sampling.penalty_repeat) < epsilon);
 
     std::filesystem::remove("equivalent_test.yaml");
     std::cout << "Equivalent YAML and CLI test passed!" << std::endl;

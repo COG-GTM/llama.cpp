@@ -45,60 +45,64 @@ using json = nlohmann::ordered_json;
 
 // YAML configuration parsing functions
 static void parse_yaml_sampling(const YAML::Node& node, common_params_sampling& sampling) {
-    if (node["seed"]) sampling.seed = node["seed"].as<uint32_t>();
-    if (node["n_prev"]) sampling.n_prev = node["n_prev"].as<int32_t>();
-    if (node["n_probs"]) sampling.n_probs = node["n_probs"].as<int32_t>();
-    if (node["min_keep"]) sampling.min_keep = node["min_keep"].as<int32_t>();
-    if (node["top_k"]) sampling.top_k = node["top_k"].as<int32_t>();
-    if (node["top_p"]) sampling.top_p = node["top_p"].as<float>();
-    if (node["min_p"]) sampling.min_p = node["min_p"].as<float>();
-    if (node["xtc_probability"]) sampling.xtc_probability = node["xtc_probability"].as<float>();
-    if (node["xtc_threshold"]) sampling.xtc_threshold = node["xtc_threshold"].as<float>();
-    if (node["typ_p"]) sampling.typ_p = node["typ_p"].as<float>();
-    if (node["temp"]) sampling.temp = node["temp"].as<float>();
-    if (node["dynatemp_range"]) sampling.dynatemp_range = node["dynatemp_range"].as<float>();
-    if (node["dynatemp_exponent"]) sampling.dynatemp_exponent = node["dynatemp_exponent"].as<float>();
-    if (node["penalty_last_n"]) sampling.penalty_last_n = node["penalty_last_n"].as<int32_t>();
-    if (node["penalty_repeat"]) sampling.penalty_repeat = node["penalty_repeat"].as<float>();
-    if (node["penalty_freq"]) sampling.penalty_freq = node["penalty_freq"].as<float>();
-    if (node["penalty_present"]) sampling.penalty_present = node["penalty_present"].as<float>();
-    if (node["dry_multiplier"]) sampling.dry_multiplier = node["dry_multiplier"].as<float>();
-    if (node["dry_base"]) sampling.dry_base = node["dry_base"].as<float>();
-    if (node["dry_allowed_length"]) sampling.dry_allowed_length = node["dry_allowed_length"].as<int32_t>();
-    if (node["dry_penalty_last_n"]) sampling.dry_penalty_last_n = node["dry_penalty_last_n"].as<int32_t>();
-    if (node["mirostat"]) sampling.mirostat = node["mirostat"].as<int32_t>();
-    if (node["top_n_sigma"]) sampling.top_n_sigma = node["top_n_sigma"].as<float>();
-    if (node["mirostat_tau"]) sampling.mirostat_tau = node["mirostat_tau"].as<float>();
-    if (node["mirostat_eta"]) sampling.mirostat_eta = node["mirostat_eta"].as<float>();
-    if (node["ignore_eos"]) sampling.ignore_eos = node["ignore_eos"].as<bool>();
-    if (node["no_perf"]) sampling.no_perf = node["no_perf"].as<bool>();
-    if (node["timing_per_token"]) sampling.timing_per_token = node["timing_per_token"].as<bool>();
-    if (node["grammar"]) sampling.grammar = node["grammar"].as<std::string>();
-    if (node["grammar_lazy"]) sampling.grammar_lazy = node["grammar_lazy"].as<bool>();
+    if (node["seed"] && node["seed"].IsScalar()) sampling.seed = node["seed"].as<uint32_t>();
+    if (node["n_prev"] && node["n_prev"].IsScalar()) sampling.n_prev = node["n_prev"].as<int32_t>();
+    if (node["n_probs"] && node["n_probs"].IsScalar()) sampling.n_probs = node["n_probs"].as<int32_t>();
+    if (node["min_keep"] && node["min_keep"].IsScalar()) sampling.min_keep = node["min_keep"].as<int32_t>();
+    if (node["top_k"] && node["top_k"].IsScalar()) sampling.top_k = node["top_k"].as<int32_t>();
+    if (node["top_p"] && node["top_p"].IsScalar()) sampling.top_p = node["top_p"].as<float>();
+    if (node["min_p"] && node["min_p"].IsScalar()) sampling.min_p = node["min_p"].as<float>();
+    if (node["xtc_probability"] && node["xtc_probability"].IsScalar()) sampling.xtc_probability = node["xtc_probability"].as<float>();
+    if (node["xtc_threshold"] && node["xtc_threshold"].IsScalar()) sampling.xtc_threshold = node["xtc_threshold"].as<float>();
+    if (node["typ_p"] && node["typ_p"].IsScalar()) sampling.typ_p = node["typ_p"].as<float>();
+    if (node["temp"] && node["temp"].IsScalar()) sampling.temp = node["temp"].as<float>();
+    if (node["dynatemp_range"] && node["dynatemp_range"].IsScalar()) sampling.dynatemp_range = node["dynatemp_range"].as<float>();
+    if (node["dynatemp_exponent"] && node["dynatemp_exponent"].IsScalar()) sampling.dynatemp_exponent = node["dynatemp_exponent"].as<float>();
+    if (node["penalty_last_n"] && node["penalty_last_n"].IsScalar()) sampling.penalty_last_n = node["penalty_last_n"].as<int32_t>();
+    if (node["penalty_repeat"] && node["penalty_repeat"].IsScalar()) sampling.penalty_repeat = node["penalty_repeat"].as<float>();
+    if (node["penalty_freq"] && node["penalty_freq"].IsScalar()) sampling.penalty_freq = node["penalty_freq"].as<float>();
+    if (node["penalty_present"] && node["penalty_present"].IsScalar()) sampling.penalty_present = node["penalty_present"].as<float>();
+    if (node["dry_multiplier"] && node["dry_multiplier"].IsScalar()) sampling.dry_multiplier = node["dry_multiplier"].as<float>();
+    if (node["dry_base"] && node["dry_base"].IsScalar()) sampling.dry_base = node["dry_base"].as<float>();
+    if (node["dry_allowed_length"] && node["dry_allowed_length"].IsScalar()) sampling.dry_allowed_length = node["dry_allowed_length"].as<int32_t>();
+    if (node["dry_penalty_last_n"] && node["dry_penalty_last_n"].IsScalar()) sampling.dry_penalty_last_n = node["dry_penalty_last_n"].as<int32_t>();
+    if (node["mirostat"] && node["mirostat"].IsScalar()) sampling.mirostat = node["mirostat"].as<int32_t>();
+    if (node["top_n_sigma"] && node["top_n_sigma"].IsScalar()) sampling.top_n_sigma = node["top_n_sigma"].as<float>();
+    if (node["mirostat_tau"] && node["mirostat_tau"].IsScalar()) sampling.mirostat_tau = node["mirostat_tau"].as<float>();
+    if (node["mirostat_eta"] && node["mirostat_eta"].IsScalar()) sampling.mirostat_eta = node["mirostat_eta"].as<float>();
+    if (node["ignore_eos"] && node["ignore_eos"].IsScalar()) sampling.ignore_eos = node["ignore_eos"].as<bool>();
+    if (node["no_perf"] && node["no_perf"].IsScalar()) sampling.no_perf = node["no_perf"].as<bool>();
+    if (node["timing_per_token"] && node["timing_per_token"].IsScalar()) sampling.timing_per_token = node["timing_per_token"].as<bool>();
+    if (node["grammar"] && node["grammar"].IsScalar()) sampling.grammar = node["grammar"].as<std::string>();
+    if (node["grammar_lazy"] && node["grammar_lazy"].IsScalar()) sampling.grammar_lazy = node["grammar_lazy"].as<bool>();
 
     if (node["dry_sequence_breakers"] && node["dry_sequence_breakers"].IsSequence()) {
         sampling.dry_sequence_breakers.clear();
-        for (const auto& breaker : node["dry_sequence_breakers"]) {
-            sampling.dry_sequence_breakers.push_back(breaker.as<std::string>());
+        const auto& breakers = node["dry_sequence_breakers"];
+        sampling.dry_sequence_breakers.reserve(breakers.size());
+        for (const auto& breaker : breakers) {
+            if (breaker && breaker.IsScalar()) {
+                sampling.dry_sequence_breakers.push_back(breaker.as<std::string>());
+            }
         }
     }
 }
 
 static void parse_yaml_model(const YAML::Node& node, common_params_model& model) {
-    if (node["path"]) model.path = node["path"].as<std::string>();
-    if (node["url"]) model.url = node["url"].as<std::string>();
-    if (node["hf_repo"]) model.hf_repo = node["hf_repo"].as<std::string>();
-    if (node["hf_file"]) model.hf_file = node["hf_file"].as<std::string>();
+    if (node["path"] && node["path"].IsScalar()) model.path = node["path"].as<std::string>();
+    if (node["url"] && node["url"].IsScalar()) model.url = node["url"].as<std::string>();
+    if (node["hf_repo"] && node["hf_repo"].IsScalar()) model.hf_repo = node["hf_repo"].as<std::string>();
+    if (node["hf_file"] && node["hf_file"].IsScalar()) model.hf_file = node["hf_file"].as<std::string>();
 }
 
 static void parse_yaml_speculative(const YAML::Node& node, common_params_speculative& spec) {
-    if (node["n_ctx"]) spec.n_ctx = node["n_ctx"].as<int32_t>();
-    if (node["n_max"]) spec.n_max = node["n_max"].as<int32_t>();
-    if (node["n_min"]) spec.n_min = node["n_min"].as<int32_t>();
-    if (node["n_gpu_layers"]) spec.n_gpu_layers = node["n_gpu_layers"].as<int32_t>();
-    if (node["p_split"]) spec.p_split = node["p_split"].as<float>();
-    if (node["p_min"]) spec.p_min = node["p_min"].as<float>();
-    if (node["cache_type_k"]) {
+    if (node["n_ctx"] && node["n_ctx"].IsScalar()) spec.n_ctx = node["n_ctx"].as<int32_t>();
+    if (node["n_max"] && node["n_max"].IsScalar()) spec.n_max = node["n_max"].as<int32_t>();
+    if (node["n_min"] && node["n_min"].IsScalar()) spec.n_min = node["n_min"].as<int32_t>();
+    if (node["n_gpu_layers"] && node["n_gpu_layers"].IsScalar()) spec.n_gpu_layers = node["n_gpu_layers"].as<int32_t>();
+    if (node["p_split"] && node["p_split"].IsScalar()) spec.p_split = node["p_split"].as<float>();
+    if (node["p_min"] && node["p_min"].IsScalar()) spec.p_min = node["p_min"].as<float>();
+    if (node["cache_type_k"] && node["cache_type_k"].IsScalar()) {
         std::string cache_type = node["cache_type_k"].as<std::string>();
         if (cache_type == "f16") spec.cache_type_k = GGML_TYPE_F16;
         else if (cache_type == "f32") spec.cache_type_k = GGML_TYPE_F32;
@@ -108,7 +112,7 @@ static void parse_yaml_speculative(const YAML::Node& node, common_params_specula
         else if (cache_type == "q5_1") spec.cache_type_k = GGML_TYPE_Q5_1;
         else if (cache_type == "q8_0") spec.cache_type_k = GGML_TYPE_Q8_0;
     }
-    if (node["cache_type_v"]) {
+    if (node["cache_type_v"] && node["cache_type_v"].IsScalar()) {
         std::string cache_type = node["cache_type_v"].as<std::string>();
         if (cache_type == "f16") spec.cache_type_v = GGML_TYPE_F16;
         else if (cache_type == "f32") spec.cache_type_v = GGML_TYPE_F32;
@@ -118,28 +122,28 @@ static void parse_yaml_speculative(const YAML::Node& node, common_params_specula
         else if (cache_type == "q5_1") spec.cache_type_v = GGML_TYPE_Q5_1;
         else if (cache_type == "q8_0") spec.cache_type_v = GGML_TYPE_Q8_0;
     }
-    if (node["model"]) {
+    if (node["model"] && node["model"].IsMap()) {
         parse_yaml_model(node["model"], spec.model);
     }
 }
 
 static void parse_yaml_vocoder(const YAML::Node& node, common_params_vocoder& vocoder) {
-    if (node["speaker_file"]) vocoder.speaker_file = node["speaker_file"].as<std::string>();
-    if (node["use_guide_tokens"]) vocoder.use_guide_tokens = node["use_guide_tokens"].as<bool>();
-    if (node["model"]) {
+    if (node["speaker_file"] && node["speaker_file"].IsScalar()) vocoder.speaker_file = node["speaker_file"].as<std::string>();
+    if (node["use_guide_tokens"] && node["use_guide_tokens"].IsScalar()) vocoder.use_guide_tokens = node["use_guide_tokens"].as<bool>();
+    if (node["model"] && node["model"].IsMap()) {
         parse_yaml_model(node["model"], vocoder.model);
     }
 }
 
 static void parse_yaml_diffusion(const YAML::Node& node, common_params_diffusion& diffusion) {
-    if (node["steps"]) diffusion.steps = node["steps"].as<int32_t>();
-    if (node["visual_mode"]) diffusion.visual_mode = node["visual_mode"].as<bool>();
-    if (node["eps"]) diffusion.eps = node["eps"].as<float>();
-    if (node["block_length"]) diffusion.block_length = node["block_length"].as<int32_t>();
-    if (node["algorithm"]) diffusion.algorithm = node["algorithm"].as<int32_t>();
-    if (node["alg_temp"]) diffusion.alg_temp = node["alg_temp"].as<float>();
-    if (node["cfg_scale"]) diffusion.cfg_scale = node["cfg_scale"].as<float>();
-    if (node["add_gumbel_noise"]) diffusion.add_gumbel_noise = node["add_gumbel_noise"].as<bool>();
+    if (node["steps"] && node["steps"].IsScalar()) diffusion.steps = node["steps"].as<int32_t>();
+    if (node["visual_mode"] && node["visual_mode"].IsScalar()) diffusion.visual_mode = node["visual_mode"].as<bool>();
+    if (node["eps"] && node["eps"].IsScalar()) diffusion.eps = node["eps"].as<float>();
+    if (node["block_length"] && node["block_length"].IsScalar()) diffusion.block_length = node["block_length"].as<int32_t>();
+    if (node["algorithm"] && node["algorithm"].IsScalar()) diffusion.algorithm = node["algorithm"].as<int32_t>();
+    if (node["alg_temp"] && node["alg_temp"].IsScalar()) diffusion.alg_temp = node["alg_temp"].as<float>();
+    if (node["cfg_scale"] && node["cfg_scale"].IsScalar()) diffusion.cfg_scale = node["cfg_scale"].as<float>();
+    if (node["add_gumbel_noise"] && node["add_gumbel_noise"].IsScalar()) diffusion.add_gumbel_noise = node["add_gumbel_noise"].as<bool>();
 }
 
 static bool load_yaml_config(const std::string& config_path, common_params& params) {
@@ -1504,6 +1508,7 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
     const common_params params_org = ctx_arg.params; // the example can modify the default params
 
     try {
+        bool has_config = false;
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
                 if (!load_yaml_config(argv[i + 1], ctx_arg.params)) {
@@ -1511,13 +1516,32 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
                     ctx_arg.params = params_org;
                     return false;
                 }
-                break;
+                has_config = true;
+                break; // Only process first --config for now
             }
         }
 
-        if (!common_params_parse_ex(argc, argv, ctx_arg)) {
-            ctx_arg.params = params_org;
-            return false;
+        if (has_config) {
+            std::vector<char*> filtered_argv;
+            filtered_argv.push_back(argv[0]); // Keep program name
+            
+            for (int i = 1; i < argc; i++) {
+                if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
+                    i++; // Skip both --config and filename
+                } else {
+                    filtered_argv.push_back(argv[i]);
+                }
+            }
+            
+            if (!common_params_parse_ex(filtered_argv.size(), filtered_argv.data(), ctx_arg)) {
+                ctx_arg.params = params_org;
+                return false;
+            }
+        } else {
+            if (!common_params_parse_ex(argc, argv, ctx_arg)) {
+                ctx_arg.params = params_org;
+                return false;
+            }
         }
         if (ctx_arg.params.usage) {
             common_params_print_usage(ctx_arg);

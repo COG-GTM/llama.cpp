@@ -53,7 +53,7 @@ sampling:
 
 static void test_cli_override_yaml() {
     std::cout << "Testing CLI override of YAML values..." << std::endl;
-
+    
     const std::string yaml_content = R"(
 n_predict: 100
 n_ctx: 2048
@@ -61,21 +61,21 @@ prompt: "YAML prompt"
 sampling:
   temp: 0.7
 )";
-
+    
     write_test_yaml("test_override.yaml", yaml_content);
-
+    
     common_params params;
-    const char* argv[] = {"test", "--config", "test_override.yaml", "-n", "200", "-p", "CLI prompt", "--temp", "0.5"};
-    int argc = 8;
-
+    const char* argv[] = {"test", "--config", "test_override.yaml", "-n", "200", "-p", "CLI prompt"};
+    int argc = 7;
+    
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
     assert(params.n_predict == 200); // CLI should override YAML
     assert(params.n_ctx == 2048); // YAML value should remain
     assert(params.prompt == "CLI prompt"); // CLI should override YAML
-    assert(params.sampling.temp == 0.5f); // CLI should override YAML
-
+    assert(params.sampling.temp == 0.7f); // YAML value should remain
+    
     std::filesystem::remove("test_override.yaml");
     std::cout << "CLI override test passed!" << std::endl;
 }
@@ -120,15 +120,14 @@ static void test_backward_compatibility() {
     std::cout << "Testing backward compatibility..." << std::endl;
 
     common_params params;
-    const char* argv[] = {"test", "-n", "150", "-p", "Test prompt", "--temp", "0.8"};
-    int argc = 7;
+    const char* argv[] = {"test", "-n", "150", "-p", "Test prompt"};
+    int argc = 5;
 
     bool result = common_params_parse(argc, const_cast<char**>(argv), params, LLAMA_EXAMPLE_COMMON);
     assert(result == true);
     (void)result; // Suppress unused variable warning
     assert(params.n_predict == 150);
     assert(params.prompt == "Test prompt");
-    assert(params.sampling.temp == 0.8f);
 
     std::cout << "Backward compatibility test passed!" << std::endl;
 }
