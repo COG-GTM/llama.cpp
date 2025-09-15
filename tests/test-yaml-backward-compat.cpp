@@ -76,9 +76,9 @@ sampling:
 
     common_params cli_params;
     const char* cli_argv[] = {
-        "test", 
+        "test",
         "-n", "100",
-        "-c", "2048", 
+        "-c", "2048",
         "-b", "512",
         "-p", "Test prompt",
         "-s", "42",
@@ -88,7 +88,7 @@ sampling:
         "--repeat-penalty", "1.1"
     };
     const int cli_argc = sizeof(cli_argv) / sizeof(cli_argv[0]);
-    
+
     bool cli_result = common_params_parse(cli_argc, const_cast<char**>(cli_argv), cli_params, LLAMA_EXAMPLE_COMMON);
 
     assert(yaml_result == true);
@@ -104,8 +104,7 @@ sampling:
     assert(yaml_params.sampling.temp == cli_params.sampling.temp);
     assert(yaml_params.sampling.top_k == cli_params.sampling.top_k);
     assert(yaml_params.sampling.top_p == cli_params.sampling.top_p);
-    
-    
+
     const float epsilon = 1e-6f;
     assert(std::abs(yaml_params.sampling.penalty_repeat - cli_params.sampling.penalty_repeat) < epsilon);
 

@@ -102,6 +102,11 @@ if(WIN32 AND (CMAKE_GENERATOR MATCHES "MSYS Makefiles" OR MSYS))
     set(CMAKE_POLICY_DEFAULT_CMP0077 NEW CACHE STRING "Use NEW policy for option() behavior")
 endif()
 
+# Add CMake policy version minimum to handle older CMake versions
+if(CMAKE_VERSION VERSION_LESS "3.5")
+    cmake_policy(VERSION 3.5)
+endif()
+
 # Disable yaml-cpp tests and tools to avoid build issues
 set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "Disable yaml-cpp tests")
 set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "Disable yaml-cpp tools")

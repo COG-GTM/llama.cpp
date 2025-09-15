@@ -1524,7 +1524,7 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
         if (has_config) {
             std::vector<char*> filtered_argv;
             filtered_argv.push_back(argv[0]); // Keep program name
-            
+
             for (int i = 1; i < argc; i++) {
                 if (strcmp(argv[i], "--config") == 0 && i + 1 < argc) {
                     i++; // Skip both --config and filename
@@ -1532,7 +1532,7 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
                     filtered_argv.push_back(argv[i]);
                 }
             }
-            
+
             if (!common_params_parse_ex(filtered_argv.size(), filtered_argv.data(), ctx_arg)) {
                 ctx_arg.params = params_org;
                 return false;
