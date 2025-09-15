@@ -92,7 +92,7 @@ option(LLAMA_LLGUIDANCE "llama-common: include LLGuidance library for structured
 FetchContent_Declare(
   yaml-cpp
   GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-  GIT_TAG yaml-cpp-0.7.0
+  GIT_TAG yaml-cpp-0.6.3
 )
 
 # Configure yaml-cpp for platform compatibility
