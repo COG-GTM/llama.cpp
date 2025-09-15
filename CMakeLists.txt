@@ -92,12 +92,14 @@ option(LLAMA_LLGUIDANCE "llama-common: include LLGuidance library for structured
 FetchContent_Declare(
   yaml-cpp
   GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-  GIT_TAG yaml-cpp-0.6.3
+  GIT_TAG 0.8.0
 )
 
 # Configure yaml-cpp for platform compatibility
-if(WIN32 AND CMAKE_GENERATOR MATCHES "MSYS Makefiles")
+if(WIN32 AND (CMAKE_GENERATOR MATCHES "MSYS Makefiles" OR MSYS))
     set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "Build yaml-cpp as shared library for MSYS2")
+    set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "Disable yaml-cpp contrib for MSYS2")
+    set(CMAKE_POLICY_DEFAULT_CMP0077 NEW CACHE STRING "Use NEW policy for option() behavior")
 endif()
 
 # Disable yaml-cpp tests and tools to avoid build issues
