@@ -146,84 +146,166 @@ static bool load_yaml_config(const std::string& config_path, common_params& para
     try {
         YAML::Node config = YAML::LoadFile(config_path);
 
-        // Parse main parameters
-        if (config["n_predict"]) params.n_predict = config["n_predict"].as<int32_t>();
-        if (config["n_ctx"]) params.n_ctx = config["n_ctx"].as<int32_t>();
-        if (config["n_batch"]) params.n_batch = config["n_batch"].as<int32_t>();
-        if (config["n_ubatch"]) params.n_ubatch = config["n_ubatch"].as<int32_t>();
-        if (config["n_keep"]) params.n_keep = config["n_keep"].as<int32_t>();
-        if (config["n_chunks"]) params.n_chunks = config["n_chunks"].as<int32_t>();
-        if (config["n_parallel"]) params.n_parallel = config["n_parallel"].as<int32_t>();
-        if (config["n_sequences"]) params.n_sequences = config["n_sequences"].as<int32_t>();
-        if (config["grp_attn_n"]) params.grp_attn_n = config["grp_attn_n"].as<int32_t>();
-        if (config["grp_attn_w"]) params.grp_attn_w = config["grp_attn_w"].as<int32_t>();
-        if (config["n_print"]) params.n_print = config["n_print"].as<int32_t>();
-        if (config["rope_freq_base"]) params.rope_freq_base = config["rope_freq_base"].as<float>();
-        if (config["rope_freq_scale"]) params.rope_freq_scale = config["rope_freq_scale"].as<float>();
-        if (config["yarn_ext_factor"]) params.yarn_ext_factor = config["yarn_ext_factor"].as<float>();
-        if (config["yarn_attn_factor"]) params.yarn_attn_factor = config["yarn_attn_factor"].as<float>();
-        if (config["yarn_beta_fast"]) params.yarn_beta_fast = config["yarn_beta_fast"].as<float>();
-        if (config["yarn_beta_slow"]) params.yarn_beta_slow = config["yarn_beta_slow"].as<float>();
-        if (config["yarn_orig_ctx"]) params.yarn_orig_ctx = config["yarn_orig_ctx"].as<int32_t>();
-        if (config["n_gpu_layers"]) params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
-        if (config["main_gpu"]) params.main_gpu = config["main_gpu"].as<int32_t>();
+        // Parse main parameters with bounds checking
+        if (config["n_predict"] && config["n_predict"].IsScalar()) {
+            params.n_predict = config["n_predict"].as<int32_t>();
+        }
+        if (config["n_ctx"] && config["n_ctx"].IsScalar()) {
+            params.n_ctx = config["n_ctx"].as<int32_t>();
+        }
+        if (config["n_batch"] && config["n_batch"].IsScalar()) {
+            params.n_batch = config["n_batch"].as<int32_t>();
+        }
+        if (config["n_ubatch"] && config["n_ubatch"].IsScalar()) {
+            params.n_ubatch = config["n_ubatch"].as<int32_t>();
+        }
+        if (config["n_keep"] && config["n_keep"].IsScalar()) {
+            params.n_keep = config["n_keep"].as<int32_t>();
+        }
+        if (config["n_chunks"] && config["n_chunks"].IsScalar()) {
+            params.n_chunks = config["n_chunks"].as<int32_t>();
+        }
+        if (config["n_parallel"] && config["n_parallel"].IsScalar()) {
+            params.n_parallel = config["n_parallel"].as<int32_t>();
+        }
+        if (config["n_sequences"] && config["n_sequences"].IsScalar()) {
+            params.n_sequences = config["n_sequences"].as<int32_t>();
+        }
+        if (config["grp_attn_n"] && config["grp_attn_n"].IsScalar()) {
+            params.grp_attn_n = config["grp_attn_n"].as<int32_t>();
+        }
+        if (config["grp_attn_w"] && config["grp_attn_w"].IsScalar()) {
+            params.grp_attn_w = config["grp_attn_w"].as<int32_t>();
+        }
+        if (config["n_print"] && config["n_print"].IsScalar()) {
+            params.n_print = config["n_print"].as<int32_t>();
+        }
+        if (config["rope_freq_base"] && config["rope_freq_base"].IsScalar()) {
+            params.rope_freq_base = config["rope_freq_base"].as<float>();
+        }
+        if (config["rope_freq_scale"] && config["rope_freq_scale"].IsScalar()) {
+            params.rope_freq_scale = config["rope_freq_scale"].as<float>();
+        }
+        if (config["yarn_ext_factor"] && config["yarn_ext_factor"].IsScalar()) {
+            params.yarn_ext_factor = config["yarn_ext_factor"].as<float>();
+        }
+        if (config["yarn_attn_factor"] && config["yarn_attn_factor"].IsScalar()) {
+            params.yarn_attn_factor = config["yarn_attn_factor"].as<float>();
+        }
+        if (config["yarn_beta_fast"] && config["yarn_beta_fast"].IsScalar()) {
+            params.yarn_beta_fast = config["yarn_beta_fast"].as<float>();
+        }
+        if (config["yarn_beta_slow"] && config["yarn_beta_slow"].IsScalar()) {
+            params.yarn_beta_slow = config["yarn_beta_slow"].as<float>();
+        }
+        if (config["yarn_orig_ctx"] && config["yarn_orig_ctx"].IsScalar()) {
+            params.yarn_orig_ctx = config["yarn_orig_ctx"].as<int32_t>();
+        }
+        if (config["n_gpu_layers"] && config["n_gpu_layers"].IsScalar()) {
+            params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
+        }
+        if (config["main_gpu"] && config["main_gpu"].IsScalar()) {
+            params.main_gpu = config["main_gpu"].as<int32_t>();
+        }
 
-        // Parse string parameters
-        if (config["model_alias"]) params.model_alias = config["model_alias"].as<std::string>();
-        if (config["hf_token"]) params.hf_token = config["hf_token"].as<std::string>();
-        if (config["prompt"]) params.prompt = config["prompt"].as<std::string>();
-        if (config["system_prompt"]) params.system_prompt = config["system_prompt"].as<std::string>();
-        if (config["prompt_file"]) params.prompt_file = config["prompt_file"].as<std::string>();
-        if (config["path_prompt_cache"]) params.path_prompt_cache = config["path_prompt_cache"].as<std::string>();
-        if (config["input_prefix"]) params.input_prefix = config["input_prefix"].as<std::string>();
-        if (config["input_suffix"]) params.input_suffix = config["input_suffix"].as<std::string>();
-        if (config["lookup_cache_static"]) params.lookup_cache_static = config["lookup_cache_static"].as<std::string>();
-        if (config["lookup_cache_dynamic"]) params.lookup_cache_dynamic = config["lookup_cache_dynamic"].as<std::string>();
-        if (config["logits_file"]) params.logits_file = config["logits_file"].as<std::string>();
+        // Parse string parameters with type checking
+        if (config["model_alias"] && config["model_alias"].IsScalar()) {
+            params.model_alias = config["model_alias"].as<std::string>();
+        }
+        if (config["hf_token"] && config["hf_token"].IsScalar()) {
+            params.hf_token = config["hf_token"].as<std::string>();
+        }
+        if (config["prompt"] && config["prompt"].IsScalar()) {
+            params.prompt = config["prompt"].as<std::string>();
+        }
+        if (config["system_prompt"] && config["system_prompt"].IsScalar()) {
+            params.system_prompt = config["system_prompt"].as<std::string>();
+        }
+        if (config["prompt_file"] && config["prompt_file"].IsScalar()) {
+            params.prompt_file = config["prompt_file"].as<std::string>();
+        }
+        if (config["path_prompt_cache"] && config["path_prompt_cache"].IsScalar()) {
+            params.path_prompt_cache = config["path_prompt_cache"].as<std::string>();
+        }
+        if (config["input_prefix"] && config["input_prefix"].IsScalar()) {
+            params.input_prefix = config["input_prefix"].as<std::string>();
+        }
+        if (config["input_suffix"] && config["input_suffix"].IsScalar()) {
+            params.input_suffix = config["input_suffix"].as<std::string>();
+        }
+        if (config["lookup_cache_static"] && config["lookup_cache_static"].IsScalar()) {
+            params.lookup_cache_static = config["lookup_cache_static"].as<std::string>();
+        }
+        if (config["lookup_cache_dynamic"] && config["lookup_cache_dynamic"].IsScalar()) {
+            params.lookup_cache_dynamic = config["lookup_cache_dynamic"].as<std::string>();
+        }
+        if (config["logits_file"] && config["logits_file"].IsScalar()) {
+            params.logits_file = config["logits_file"].as<std::string>();
+        }
 
-        // Parse boolean parameters
-        if (config["lora_init_without_apply"]) params.lora_init_without_apply = config["lora_init_without_apply"].as<bool>();
-        if (config["offline"]) params.offline = config["offline"].as<bool>();
+        // Parse boolean parameters with type checking
+        if (config["lora_init_without_apply"] && config["lora_init_without_apply"].IsScalar()) {
+            params.lora_init_without_apply = config["lora_init_without_apply"].as<bool>();
+        }
+        if (config["offline"] && config["offline"].IsScalar()) {
+            params.offline = config["offline"].as<bool>();
+        }
 
-        // Parse integer parameters
-        if (config["verbosity"]) params.verbosity = config["verbosity"].as<int32_t>();
-        if (config["control_vector_layer_start"]) params.control_vector_layer_start = config["control_vector_layer_start"].as<int32_t>();
-        if (config["control_vector_layer_end"]) params.control_vector_layer_end = config["control_vector_layer_end"].as<int32_t>();
-        if (config["ppl_stride"]) params.ppl_stride = config["ppl_stride"].as<int32_t>();
-        if (config["ppl_output_type"]) params.ppl_output_type = config["ppl_output_type"].as<int32_t>();
+        // Parse integer parameters with type checking
+        if (config["verbosity"] && config["verbosity"].IsScalar()) {
+            params.verbosity = config["verbosity"].as<int32_t>();
+        }
+        if (config["control_vector_layer_start"] && config["control_vector_layer_start"].IsScalar()) {
+            params.control_vector_layer_start = config["control_vector_layer_start"].as<int32_t>();
+        }
+        if (config["control_vector_layer_end"] && config["control_vector_layer_end"].IsScalar()) {
+            params.control_vector_layer_end = config["control_vector_layer_end"].as<int32_t>();
+        }
+        if (config["ppl_stride"] && config["ppl_stride"].IsScalar()) {
+            params.ppl_stride = config["ppl_stride"].as<int32_t>();
+        }
+        if (config["ppl_output_type"] && config["ppl_output_type"].IsScalar()) {
+            params.ppl_output_type = config["ppl_output_type"].as<int32_t>();
+        }
 
-        // Parse array parameters
+        // Parse array parameters with proper bounds checking
         if (config["in_files"] && config["in_files"].IsSequence()) {
             params.in_files.clear();
+            params.in_files.reserve(config["in_files"].size());
             for (const auto& file : config["in_files"]) {
-                params.in_files.push_back(file.as<std::string>());
+                if (file.IsScalar()) {
+                    params.in_files.push_back(file.as<std::string>());
+                }
             }
         }
 
         if (config["antiprompt"] && config["antiprompt"].IsSequence()) {
             params.antiprompt.clear();
+            params.antiprompt.reserve(config["antiprompt"].size());
             for (const auto& prompt : config["antiprompt"]) {
-                params.antiprompt.push_back(prompt.as<std::string>());
+                if (prompt.IsScalar()) {
+                    params.antiprompt.push_back(prompt.as<std::string>());
+                }
             }
         }
 
-        if (config["sampling"]) {
+        if (config["sampling"] && config["sampling"].IsMap()) {
             parse_yaml_sampling(config["sampling"], params.sampling);
         }
 
-        if (config["model"]) {
+        if (config["model"] && config["model"].IsMap()) {
             parse_yaml_model(config["model"], params.model);
         }
 
-        if (config["speculative"]) {
+        if (config["speculative"] && config["speculative"].IsMap()) {
             parse_yaml_speculative(config["speculative"], params.speculative);
         }
 
-        if (config["vocoder"]) {
+        if (config["vocoder"] && config["vocoder"].IsMap()) {
             parse_yaml_vocoder(config["vocoder"], params.vocoder);
         }
 
-        if (config["diffusion"]) {
+        if (config["diffusion"] && config["diffusion"].IsMap()) {
             parse_yaml_diffusion(config["diffusion"], params.diffusion);
         }
 
@@ -233,6 +315,9 @@ static bool load_yaml_config(const std::string& config_path, common_params& para
         return false;
     } catch (const std::exception& e) {
         fprintf(stderr, "Error loading YAML config: %s\n", e.what());
+        return false;
+    } catch (...) {
+        fprintf(stderr, "Unknown error loading YAML config\n");
         return false;
     }
 }

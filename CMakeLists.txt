@@ -94,6 +94,17 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
   GIT_TAG yaml-cpp-0.7.0
 )
+
+# Configure yaml-cpp for platform compatibility
+if(WIN32 AND CMAKE_GENERATOR MATCHES "MSYS Makefiles")
+    set(YAML_BUILD_SHARED_LIBS ON CACHE BOOL "Build yaml-cpp as shared library for MSYS2")
+endif()
+
+# Disable yaml-cpp tests and tools to avoid build issues
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "Disable yaml-cpp tests")
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "Disable yaml-cpp tools")
+set(YAML_CPP_BUILD_CONTRIB OFF CACHE BOOL "Disable yaml-cpp contrib")
+
 FetchContent_MakeAvailable(yaml-cpp)
 
 # Required for relocatable CMake package
