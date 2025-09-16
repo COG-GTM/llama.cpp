@@ -116,7 +116,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["interactive"]) params.interactive = config["interactive"].as<bool>();
         if (config["interactive_first"]) params.interactive_first = config["interactive_first"].as<bool>();
         if (config["conversation"]) {
-            params.conversation_mode = config["conversation"].as<bool>() ? 
+            params.conversation_mode = config["conversation"].as<bool>() ?
                 COMMON_CONVERSATION_MODE_ENABLED : COMMON_CONVERSATION_MODE_DISABLED;
         }
         if (config["use_color"]) params.use_color = config["use_color"].as<bool>();

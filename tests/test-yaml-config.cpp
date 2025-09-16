@@ -83,7 +83,7 @@ interactive: false
 
 static void test_yaml_config_invalid_file() {
     printf("Testing invalid YAML file handling...\n");
-    
+
     common_params params;
     bool result = common_params_load_from_yaml("nonexistent.yaml", params);
     (void)result; // suppress unused variable warning
@@ -158,7 +158,7 @@ antiprompt:
     assert(params.sampling.dry_sequence_breakers[0] == "\n");
     assert(params.sampling.dry_sequence_breakers[1] == ":");
     assert(params.sampling.dry_sequence_breakers[2] == "\"");
-    
+
     assert(params.speculative.n_max == 16);
     assert(params.speculative.n_min == 5);
     assert(params.speculative.p_split == 0.1f);
@@ -200,7 +200,7 @@ static void test_empty_config_file() {
     std::ofstream config_file("empty.yaml");
     config_file << "";
     config_file.close();
-    
+
     common_params params;
     params.n_predict = 999;
     params.sampling.temp = 0.123f;
