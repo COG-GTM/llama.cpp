@@ -141,7 +141,8 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
 
         // Sampling parameters
         if (config["seed"]) {
-            params.sampling.seed = config["seed"].as<uint32_t>();
+            int32_t seed_val = config["seed"].as<int32_t>();
+            params.sampling.seed = (seed_val == -1) ? LLAMA_DEFAULT_SEED : static_cast<uint32_t>(seed_val);
         }
         if (config["temperature"]) {
             params.sampling.temp = config["temperature"].as<float>();
