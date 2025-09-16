@@ -69,7 +69,6 @@ static void write_file(const std::string & fname, const std::string & content) {
 bool common_params_load_from_yaml(const std::string & config_file, common_params & params) {
     try {
         YAML::Node config = YAML::LoadFile(config_file);
-        
         // Model parameters
         if (config["model"]) {
             if (config["model"]["path"]) {
@@ -85,7 +84,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
                 params.model.hf_file = config["model"]["hf_file"].as<std::string>();
             }
         }
-        
+
         // Basic parameters
         if (config["n_predict"]) params.n_predict = config["n_predict"].as<int32_t>();
         if (config["n_ctx"]) params.n_ctx = config["n_ctx"].as<int32_t>();
@@ -98,7 +97,6 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["n_gpu_layers"]) params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
         if (config["main_gpu"]) params.main_gpu = config["main_gpu"].as<int32_t>();
         if (config["verbosity"]) params.verbosity = config["verbosity"].as<int32_t>();
-        
         // String parameters
         if (config["prompt"]) params.prompt = config["prompt"].as<std::string>();
         if (config["system_prompt"]) params.system_prompt = config["system_prompt"].as<std::string>();
@@ -106,7 +104,6 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["input_prefix"]) params.input_prefix = config["input_prefix"].as<std::string>();
         if (config["input_suffix"]) params.input_suffix = config["input_suffix"].as<std::string>();
         if (config["hf_token"]) params.hf_token = config["hf_token"].as<std::string>();
-        
         // Float parameters
         if (config["rope_freq_base"]) params.rope_freq_base = config["rope_freq_base"].as<float>();
         if (config["rope_freq_scale"]) params.rope_freq_scale = config["rope_freq_scale"].as<float>();
@@ -114,7 +111,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["yarn_attn_factor"]) params.yarn_attn_factor = config["yarn_attn_factor"].as<float>();
         if (config["yarn_beta_fast"]) params.yarn_beta_fast = config["yarn_beta_fast"].as<float>();
         if (config["yarn_beta_slow"]) params.yarn_beta_slow = config["yarn_beta_slow"].as<float>();
-        
+
         // Boolean parameters
         if (config["interactive"]) params.interactive = config["interactive"].as<bool>();
         if (config["interactive_first"]) params.interactive_first = config["interactive_first"].as<bool>();
@@ -129,7 +126,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["multiline_input"]) params.multiline_input = config["multiline_input"].as<bool>();
         if (config["cont_batching"]) params.cont_batching = config["cont_batching"].as<bool>();
         if (config["flash_attn"]) {
-            params.flash_attn_type = config["flash_attn"].as<bool>() ? 
+            params.flash_attn_type = config["flash_attn"].as<bool>() ?
                 LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
         }
         if (config["no_perf"]) params.no_perf = config["no_perf"].as<bool>();
@@ -142,7 +139,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
         if (config["no_kv_offload"]) params.no_kv_offload = config["no_kv_offload"].as<bool>();
         if (config["warmup"]) params.warmup = config["warmup"].as<bool>();
         if (config["check_tensors"]) params.check_tensors = config["check_tensors"].as<bool>();
-        
+
         // CPU parameters
         if (config["cpuparams"]) {
             const auto & cpu_config = config["cpuparams"];
@@ -150,7 +147,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
             if (cpu_config["strict_cpu"]) params.cpuparams.strict_cpu = cpu_config["strict_cpu"].as<bool>();
             if (cpu_config["poll"]) params.cpuparams.poll = cpu_config["poll"].as<uint32_t>();
         }
-        
+
         // Sampling parameters
         if (config["sampling"]) {
             const auto & sampling_config = config["sampling"];
@@ -184,7 +181,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
             if (sampling_config["timing_per_token"]) params.sampling.timing_per_token = sampling_config["timing_per_token"].as<bool>();
             if (sampling_config["grammar"]) params.sampling.grammar = sampling_config["grammar"].as<std::string>();
             if (sampling_config["grammar_lazy"]) params.sampling.grammar_lazy = sampling_config["grammar_lazy"].as<bool>();
-            
+
             if (sampling_config["dry_sequence_breakers"]) {
                 params.sampling.dry_sequence_breakers.clear();
                 for (const auto & breaker : sampling_config["dry_sequence_breakers"]) {
@@ -192,7 +189,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
                 }
             }
         }
-        
+
         // Speculative parameters
         if (config["speculative"]) {
             const auto & spec_config = config["speculative"];
@@ -202,7 +199,7 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
             if (spec_config["n_gpu_layers"]) params.speculative.n_gpu_layers = spec_config["n_gpu_layers"].as<int32_t>();
             if (spec_config["p_split"]) params.speculative.p_split = spec_config["p_split"].as<float>();
             if (spec_config["p_min"]) params.speculative.p_min = spec_config["p_min"].as<float>();
-            
+
             if (spec_config["model"]) {
                 const auto & model_config = spec_config["model"];
                 if (model_config["path"]) params.speculative.model.path = model_config["path"].as<std::string>();
@@ -211,14 +208,14 @@ bool common_params_load_from_yaml(const std::string & config_file, common_params
                 if (model_config["hf_file"]) params.speculative.model.hf_file = model_config["hf_file"].as<std::string>();
             }
         }
-        
+
         if (config["antiprompt"]) {
             params.antiprompt.clear();
             for (const auto & antiprompt : config["antiprompt"]) {
                 params.antiprompt.push_back(antiprompt.as<std::string>());
             }
         }
-        
+
         return true;
     } catch (const YAML::Exception & e) {
         LOG_ERR("Error parsing YAML config file '%s': %s\n", config_file.c_str(), e.what());
@@ -392,8 +389,7 @@ static bool curl_perform_with_retry(const std::string & url, CURL * curl, int ma
 
         CURLcode res = curl_easy_perform(curl);
         if (res == CURLE_OK) {
-            return true;
-        }
+            return true;}
 
         int exponential_backoff_delay = std::pow(retry_delay_seconds, max_attempts - remaining_attempts) * 1000;
         LOG_WRN("%s: curl_easy_perform() failed: %s, retrying after %d milliseconds...\n", __func__, curl_easy_strerror(res), exponential_backoff_delay);
@@ -1391,20 +1387,20 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
             ctx_arg.params = params_org;
             return false;
         }
-        
+
         // Load YAML config if specified
         if (!ctx_arg.params.config_file.empty()) {
             if (!common_params_load_from_yaml(ctx_arg.params.config_file, ctx_arg.params)) {
                 ctx_arg.params = params_org;
                 return false;
             }
-            
+
             if (!common_params_parse_ex(argc, argv, ctx_arg)) {
                 ctx_arg.params = params_org;
                 return false;
             }
         }
-        
+
         if (ctx_arg.params.usage) {
             common_params_print_usage(ctx_arg);
             if (ctx_arg.print_usage) {
