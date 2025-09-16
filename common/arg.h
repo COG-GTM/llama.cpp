@@ -76,6 +76,9 @@ struct common_params_context {
 // if one argument has invalid value, it will automatically display usage of the specific argument (and not the full usage message)
 bool common_params_parse(int argc, char ** argv, common_params & params, llama_example ex, void(*print_usage)(int, char **) = nullptr);
 
+// load parameters from YAML config file
+bool common_params_load_from_yaml(const std::string & config_file, common_params & params);
+
 // function to be used by test-arg-parser
 common_params_context common_params_parser_init(common_params & params, llama_example ex, void(*print_usage)(int, char **) = nullptr);
 bool common_has_curl();

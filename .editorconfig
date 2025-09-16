@@ -52,3 +52,10 @@ insert_final_newline = unset
 [vendor/miniaudio/miniaudio.h]
 trim_trailing_whitespace = unset
 insert_final_newline = unset
+
+[vendor/yaml-cpp/**]
+trim_trailing_whitespace = unset
+insert_final_newline = unset
+indent_style = unset
+end_of_line = unset
+charset = unset

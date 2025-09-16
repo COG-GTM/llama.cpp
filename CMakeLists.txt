@@ -179,6 +179,8 @@ endif()
 # build the library
 #
 
+add_subdirectory(vendor/yaml-cpp)
+
 add_subdirectory(src)
 
 #
