@@ -19,6 +19,10 @@
 #define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
 
+#ifdef LLAMA_YAML_CPP
+#include <yaml-cpp/yaml.h>
+#endif
+
 #include <algorithm>
 #include <climits>
 #include <cstdarg>
@@ -64,6 +68,177 @@ static void write_file(const std::string & fname, const std::string & content) {
     file << content;
     file.close();
 }
+
+#ifdef LLAMA_YAML_CPP
+static bool common_params_load_from_yaml(const std::string & config_file, common_params & params) {
+    if (config_file.empty()) {
+        return true;
+    }
+    
+    try {
+        YAML::Node config = YAML::LoadFile(config_file);
+        
+        // Model parameters
+        if (config["model"]) {
+            params.model.path = config["model"].as<std::string>();
+        }
+        if (config["model_url"]) {
+            params.model.url = config["model_url"].as<std::string>();
+        }
+        if (config["model_alias"]) {
+            params.model_alias = config["model_alias"].as<std::string>();
+        }
+        if (config["hf_repo"]) {
+            params.model.hf_repo = config["hf_repo"].as<std::string>();
+        }
+        if (config["hf_file"]) {
+            params.model.hf_file = config["hf_file"].as<std::string>();
+        }
+        if (config["hf_token"]) {
+            params.hf_token = config["hf_token"].as<std::string>();
+        }
+        
+        // Context and prediction parameters
+        if (config["ctx_size"]) {
+            params.n_ctx = config["ctx_size"].as<int32_t>();
+        }
+        if (config["predict"]) {
+            params.n_predict = config["predict"].as<int32_t>();
+        }
+        if (config["batch_size"]) {
+            params.n_batch = config["batch_size"].as<int32_t>();
+        }
+        if (config["ubatch_size"]) {
+            params.n_ubatch = config["ubatch_size"].as<int32_t>();
+        }
+        if (config["keep"]) {
+            params.n_keep = config["keep"].as<int32_t>();
+        }
+        if (config["chunks"]) {
+            params.n_chunks = config["chunks"].as<int32_t>();
+        }
+        if (config["parallel"]) {
+            params.n_parallel = config["parallel"].as<int32_t>();
+        }
+        if (config["sequences"]) {
+            params.n_sequences = config["sequences"].as<int32_t>();
+        }
+        
+        // CPU parameters
+        if (config["threads"]) {
+            params.cpuparams.n_threads = config["threads"].as<int>();
+        }
+        if (config["threads_batch"]) {
+            params.cpuparams_batch.n_threads = config["threads_batch"].as<int>();
+        }
+        
+        // GPU parameters
+        if (config["n_gpu_layers"]) {
+            params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
+        }
+        if (config["main_gpu"]) {
+            params.main_gpu = config["main_gpu"].as<int32_t>();
+        }
+        
+        // Sampling parameters
+        if (config["seed"]) {
+            params.sampling.seed = config["seed"].as<uint32_t>();
+        }
+        if (config["temperature"]) {
+            params.sampling.temp = config["temperature"].as<float>();
+        }
+        if (config["top_k"]) {
+            params.sampling.top_k = config["top_k"].as<int32_t>();
+        }
+        if (config["top_p"]) {
+            params.sampling.top_p = config["top_p"].as<float>();
+        }
+        if (config["min_p"]) {
+            params.sampling.min_p = config["min_p"].as<float>();
+        }
+        if (config["typical_p"]) {
+            params.sampling.typ_p = config["typical_p"].as<float>();
+        }
+        if (config["repeat_last_n"]) {
+            params.sampling.penalty_last_n = config["repeat_last_n"].as<int32_t>();
+        }
+        if (config["repeat_penalty"]) {
+            params.sampling.penalty_repeat = config["repeat_penalty"].as<float>();
+        }
+        if (config["frequency_penalty"]) {
+            params.sampling.penalty_freq = config["frequency_penalty"].as<float>();
+        }
+        if (config["presence_penalty"]) {
+            params.sampling.penalty_present = config["presence_penalty"].as<float>();
+        }
+        if (config["mirostat"]) {
+            params.sampling.mirostat = config["mirostat"].as<int32_t>();
+        }
+        if (config["mirostat_tau"]) {
+            params.sampling.mirostat_tau = config["mirostat_tau"].as<float>();
+        }
+        if (config["mirostat_eta"]) {
+            params.sampling.mirostat_eta = config["mirostat_eta"].as<float>();
+        }
+        
+        // Prompt and system parameters
+        if (config["prompt"]) {
+            params.prompt = config["prompt"].as<std::string>();
+        }
+        if (config["system_prompt"]) {
+            params.system_prompt = config["system_prompt"].as<std::string>();
+        }
+        if (config["prompt_file"]) {
+            params.prompt_file = config["prompt_file"].as<std::string>();
+        }
+        if (config["prompt_cache"]) {
+            params.path_prompt_cache = config["prompt_cache"].as<std::string>();
+        }
+        
+        // Input/Output parameters
+        if (config["input_prefix"]) {
+            params.input_prefix = config["input_prefix"].as<std::string>();
+        }
+        if (config["input_suffix"]) {
+            params.input_suffix = config["input_suffix"].as<std::string>();
+        }
+        
+        if (config["verbose"]) {
+            params.verbosity = config["verbose"].as<int32_t>();
+        }
+        
+        if (config["conversation"]) {
+            bool conv = config["conversation"].as<bool>();
+            params.conversation_mode = conv ? COMMON_CONVERSATION_MODE_ENABLED : COMMON_CONVERSATION_MODE_DISABLED;
+        }
+        
+        if (config["interactive"]) {
+            params.interactive = config["interactive"].as<bool>();
+        }
+        if (config["interactive_first"]) {
+            params.interactive_first = config["interactive_first"].as<bool>();
+        }
+        
+        if (config["antiprompt"]) {
+            if (config["antiprompt"].IsSequence()) {
+                for (const auto & item : config["antiprompt"]) {
+                    params.antiprompt.push_back(item.as<std::string>());
+                }
+            } else {
+                params.antiprompt.push_back(config["antiprompt"].as<std::string>());
+            }
+        }
+        
+        return true;
+    } catch (const YAML::Exception & e) {
+        fprintf(stderr, "Error parsing YAML config file '%s': %s\n", config_file.c_str(), e.what());
+        return false;
+    } catch (const std::exception & e) {
+        fprintf(stderr, "Error loading YAML config file '%s': %s\n", config_file.c_str(), e.what());
+        return false;
+    }
+}
+#endif
 
 common_arg & common_arg::set_examples(std::initializer_list<enum llama_example> examples) {
     this->examples = std::move(examples);
@@ -1301,6 +1476,21 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
             params.usage = true;
         }
     ));
+
+#ifdef LLAMA_YAML_CPP
+    add_opt(common_arg(
+        {"--config"},
+        "CONFIG_FILE",
+        "path to YAML configuration file",
+        [](common_params & params, const std::string & value) {
+            params.config_file = value;
+            if (!common_params_load_from_yaml(value, params)) {
+                throw std::invalid_argument("failed to load YAML config file: " + value);
+            }
+        }
+    ).set_examples({LLAMA_EXAMPLE_COMMON, LLAMA_EXAMPLE_MAIN, LLAMA_EXAMPLE_SERVER}));
+#endif
+
     add_opt(common_arg(
         {"--version"},
         "show version and build info",

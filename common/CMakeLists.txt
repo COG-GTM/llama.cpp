@@ -137,6 +137,15 @@ target_include_directories(${TARGET} PUBLIC . ../vendor)
 target_compile_features   (${TARGET} PUBLIC cxx_std_17)
 target_link_libraries     (${TARGET} PRIVATE ${LLAMA_COMMON_EXTRA_LIBS} PUBLIC llama Threads::Threads)
 
+if (LLAMA_YAML_CPP AND YAML_CPP_FOUND)
+    target_link_libraries(${TARGET} PRIVATE ${YAML_CPP_LIBRARIES})
+    target_include_directories(${TARGET} PRIVATE ${YAML_CPP_INCLUDE_DIRS})
+    target_compile_definitions(${TARGET} PRIVATE LLAMA_YAML_CPP)
+elseif (LLAMA_YAML_CPP AND yaml-cpp_FOUND)
+    target_link_libraries(${TARGET} PRIVATE yaml-cpp)
+    target_compile_definitions(${TARGET} PRIVATE LLAMA_YAML_CPP)
+endif()
+
 
 #
 # copy the license files

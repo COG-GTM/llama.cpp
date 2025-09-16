@@ -86,6 +86,7 @@ option(LLAMA_BUILD_SERVER   "llama: build server example" ${LLAMA_STANDALONE})
 # 3rd party libs
 option(LLAMA_CURL       "llama: use libcurl to download model from an URL" ON)
 option(LLAMA_LLGUIDANCE "llama-common: include LLGuidance library for structured output in common utils" OFF)
+option(LLAMA_YAML_CPP   "llama: use yaml-cpp for YAML config file support" ON)
 
 # Required for relocatable CMake package
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-info.cmake)
@@ -188,6 +189,30 @@ add_subdirectory(src)
 if (NOT LLAMA_BUILD_COMMON)
     message(STATUS "LLAMA_BUILD_COMMON is OFF, disabling LLAMA_CURL")
     set(LLAMA_CURL OFF)
+endif()
+
+# Find yaml-cpp if enabled
+if (LLAMA_YAML_CPP)
+    find_package(PkgConfig QUIET)
+    if (PkgConfig_FOUND)
+        pkg_check_modules(YAML_CPP QUIET yaml-cpp)
+    endif()
+    
+    if (NOT YAML_CPP_FOUND)
+        find_package(yaml-cpp QUIET)
+        if (yaml-cpp_FOUND)
+            set(YAML_CPP_LIBRARIES yaml-cpp)
+            set(YAML_CPP_INCLUDE_DIRS ${yaml-cpp_INCLUDE_DIRS})
+        endif()
+    endif()
+    
+    if (NOT YAML_CPP_FOUND AND NOT yaml-cpp_FOUND)
+        message(STATUS "yaml-cpp not found, disabling YAML config support")
+        set(LLAMA_YAML_CPP OFF)
+    else()
+        message(STATUS "yaml-cpp found, enabling YAML config support")
+        add_compile_definitions(LLAMA_YAML_CPP)
+    endif()
 endif()
 
 if (LLAMA_BUILD_COMMON)

@@ -1,0 +1,43 @@
+
+model: "models/7B/ggml-model-f16.gguf"
+
+ctx_size: 2048        # Context size (number of tokens)
+predict: 128          # Number of tokens to predict (-1 for unlimited)
+batch_size: 512       # Batch size for prompt processing
+ubatch_size: 512      # Physical batch size
+keep: 0               # Number of tokens to keep from initial prompt
+chunks: -1            # Max number of chunks to process (-1 = unlimited)
+parallel: 1           # Number of parallel sequences
+sequences: 1          # Number of sequences to decode
+
+threads: 4            # Number of threads to use
+threads_batch: 4      # Number of threads for batch processing
+
+n_gpu_layers: -1      # Number of layers to offload to GPU (-1 = all)
+main_gpu: 0           # Main GPU to use
+
+seed: -1              # Random seed (-1 for random)
+temperature: 0.8      # Sampling temperature
+top_k: 40             # Top-k sampling
+top_p: 0.95           # Top-p (nucleus) sampling
+min_p: 0.05           # Min-p sampling
+typical_p: 1.0        # Typical-p sampling
+repeat_last_n: 64     # Last n tokens to consider for repetition penalty
+repeat_penalty: 1.1   # Repetition penalty
+frequency_penalty: 0.0  # Frequency penalty
+presence_penalty: 0.0   # Presence penalty
+mirostat: 0           # Mirostat sampling (0=disabled, 1=v1, 2=v2)
+mirostat_tau: 5.0     # Mirostat target entropy
+mirostat_eta: 0.1     # Mirostat learning rate
+
+
+
+verbose: 0            # Verbosity level (0=quiet, 1=normal, 2=verbose)
+conversation: false   # Enable conversation mode
+interactive: false    # Enable interactive mode
+interactive_first: false  # Start in interactive mode
+
+antiprompt:
+  - "User:"
+  - "Human:"
+  - "\n\n"
