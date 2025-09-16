@@ -18,6 +18,7 @@
 
 #define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
+#include <yaml-cpp/yaml.h>
 
 #include <algorithm>
 #include <climits>
@@ -63,6 +64,169 @@ static void write_file(const std::string & fname, const std::string & content) {
     }
     file << content;
     file.close();
+}
+
+bool common_params_load_from_yaml(const std::string & config_file, common_params & params) {
+    try {
+        YAML::Node config = YAML::LoadFile(config_file);
+        
+        // Model parameters
+        if (config["model"]) {
+            if (config["model"]["path"]) {
+                params.model.path = config["model"]["path"].as<std::string>();
+            }
+            if (config["model"]["url"]) {
+                params.model.url = config["model"]["url"].as<std::string>();
+            }
+            if (config["model"]["hf_repo"]) {
+                params.model.hf_repo = config["model"]["hf_repo"].as<std::string>();
+            }
+            if (config["model"]["hf_file"]) {
+                params.model.hf_file = config["model"]["hf_file"].as<std::string>();
+            }
+        }
+        
+        // Basic parameters
+        if (config["n_predict"]) params.n_predict = config["n_predict"].as<int32_t>();
+        if (config["n_ctx"]) params.n_ctx = config["n_ctx"].as<int32_t>();
+        if (config["n_batch"]) params.n_batch = config["n_batch"].as<int32_t>();
+        if (config["n_ubatch"]) params.n_ubatch = config["n_ubatch"].as<int32_t>();
+        if (config["n_keep"]) params.n_keep = config["n_keep"].as<int32_t>();
+        if (config["n_chunks"]) params.n_chunks = config["n_chunks"].as<int32_t>();
+        if (config["n_parallel"]) params.n_parallel = config["n_parallel"].as<int32_t>();
+        if (config["n_sequences"]) params.n_sequences = config["n_sequences"].as<int32_t>();
+        if (config["n_gpu_layers"]) params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
+        if (config["main_gpu"]) params.main_gpu = config["main_gpu"].as<int32_t>();
+        if (config["verbosity"]) params.verbosity = config["verbosity"].as<int32_t>();
+        
+        // String parameters
+        if (config["prompt"]) params.prompt = config["prompt"].as<std::string>();
+        if (config["system_prompt"]) params.system_prompt = config["system_prompt"].as<std::string>();
+        if (config["prompt_file"]) params.prompt_file = config["prompt_file"].as<std::string>();
+        if (config["input_prefix"]) params.input_prefix = config["input_prefix"].as<std::string>();
+        if (config["input_suffix"]) params.input_suffix = config["input_suffix"].as<std::string>();
+        if (config["hf_token"]) params.hf_token = config["hf_token"].as<std::string>();
+        
+        // Float parameters
+        if (config["rope_freq_base"]) params.rope_freq_base = config["rope_freq_base"].as<float>();
+        if (config["rope_freq_scale"]) params.rope_freq_scale = config["rope_freq_scale"].as<float>();
+        if (config["yarn_ext_factor"]) params.yarn_ext_factor = config["yarn_ext_factor"].as<float>();
+        if (config["yarn_attn_factor"]) params.yarn_attn_factor = config["yarn_attn_factor"].as<float>();
+        if (config["yarn_beta_fast"]) params.yarn_beta_fast = config["yarn_beta_fast"].as<float>();
+        if (config["yarn_beta_slow"]) params.yarn_beta_slow = config["yarn_beta_slow"].as<float>();
+        
+        // Boolean parameters
+        if (config["interactive"]) params.interactive = config["interactive"].as<bool>();
+        if (config["interactive_first"]) params.interactive_first = config["interactive_first"].as<bool>();
+        if (config["conversation"]) {
+            params.conversation_mode = config["conversation"].as<bool>() ? 
+                COMMON_CONVERSATION_MODE_ENABLED : COMMON_CONVERSATION_MODE_DISABLED;
+        }
+        if (config["use_color"]) params.use_color = config["use_color"].as<bool>();
+        if (config["simple_io"]) params.simple_io = config["simple_io"].as<bool>();
+        if (config["embedding"]) params.embedding = config["embedding"].as<bool>();
+        if (config["escape"]) params.escape = config["escape"].as<bool>();
+        if (config["multiline_input"]) params.multiline_input = config["multiline_input"].as<bool>();
+        if (config["cont_batching"]) params.cont_batching = config["cont_batching"].as<bool>();
+        if (config["flash_attn"]) {
+            params.flash_attn_type = config["flash_attn"].as<bool>() ? 
+                LLAMA_FLASH_ATTN_TYPE_ENABLED : LLAMA_FLASH_ATTN_TYPE_DISABLED;
+        }
+        if (config["no_perf"]) params.no_perf = config["no_perf"].as<bool>();
+        if (config["ctx_shift"]) params.ctx_shift = config["ctx_shift"].as<bool>();
+        if (config["input_prefix_bos"]) params.input_prefix_bos = config["input_prefix_bos"].as<bool>();
+        if (config["use_mmap"]) params.use_mmap = config["use_mmap"].as<bool>();
+        if (config["use_mlock"]) params.use_mlock = config["use_mlock"].as<bool>();
+        if (config["verbose_prompt"]) params.verbose_prompt = config["verbose_prompt"].as<bool>();
+        if (config["display_prompt"]) params.display_prompt = config["display_prompt"].as<bool>();
+        if (config["no_kv_offload"]) params.no_kv_offload = config["no_kv_offload"].as<bool>();
+        if (config["warmup"]) params.warmup = config["warmup"].as<bool>();
+        if (config["check_tensors"]) params.check_tensors = config["check_tensors"].as<bool>();
+        
+        // CPU parameters
+        if (config["cpuparams"]) {
+            const auto & cpu_config = config["cpuparams"];
+            if (cpu_config["n_threads"]) params.cpuparams.n_threads = cpu_config["n_threads"].as<int>();
+            if (cpu_config["strict_cpu"]) params.cpuparams.strict_cpu = cpu_config["strict_cpu"].as<bool>();
+            if (cpu_config["poll"]) params.cpuparams.poll = cpu_config["poll"].as<uint32_t>();
+        }
+        
+        // Sampling parameters
+        if (config["sampling"]) {
+            const auto & sampling_config = config["sampling"];
+            if (sampling_config["seed"]) params.sampling.seed = sampling_config["seed"].as<uint32_t>();
+            if (sampling_config["n_prev"]) params.sampling.n_prev = sampling_config["n_prev"].as<int32_t>();
+            if (sampling_config["n_probs"]) params.sampling.n_probs = sampling_config["n_probs"].as<int32_t>();
+            if (sampling_config["min_keep"]) params.sampling.min_keep = sampling_config["min_keep"].as<int32_t>();
+            if (sampling_config["top_k"]) params.sampling.top_k = sampling_config["top_k"].as<int32_t>();
+            if (sampling_config["top_p"]) params.sampling.top_p = sampling_config["top_p"].as<float>();
+            if (sampling_config["min_p"]) params.sampling.min_p = sampling_config["min_p"].as<float>();
+            if (sampling_config["xtc_probability"]) params.sampling.xtc_probability = sampling_config["xtc_probability"].as<float>();
+            if (sampling_config["xtc_threshold"]) params.sampling.xtc_threshold = sampling_config["xtc_threshold"].as<float>();
+            if (sampling_config["typ_p"]) params.sampling.typ_p = sampling_config["typ_p"].as<float>();
+            if (sampling_config["temp"]) params.sampling.temp = sampling_config["temp"].as<float>();
+            if (sampling_config["dynatemp_range"]) params.sampling.dynatemp_range = sampling_config["dynatemp_range"].as<float>();
+            if (sampling_config["dynatemp_exponent"]) params.sampling.dynatemp_exponent = sampling_config["dynatemp_exponent"].as<float>();
+            if (sampling_config["penalty_last_n"]) params.sampling.penalty_last_n = sampling_config["penalty_last_n"].as<int32_t>();
+            if (sampling_config["penalty_repeat"]) params.sampling.penalty_repeat = sampling_config["penalty_repeat"].as<float>();
+            if (sampling_config["penalty_freq"]) params.sampling.penalty_freq = sampling_config["penalty_freq"].as<float>();
+            if (sampling_config["penalty_present"]) params.sampling.penalty_present = sampling_config["penalty_present"].as<float>();
+            if (sampling_config["dry_multiplier"]) params.sampling.dry_multiplier = sampling_config["dry_multiplier"].as<float>();
+            if (sampling_config["dry_base"]) params.sampling.dry_base = sampling_config["dry_base"].as<float>();
+            if (sampling_config["dry_allowed_length"]) params.sampling.dry_allowed_length = sampling_config["dry_allowed_length"].as<int32_t>();
+            if (sampling_config["dry_penalty_last_n"]) params.sampling.dry_penalty_last_n = sampling_config["dry_penalty_last_n"].as<int32_t>();
+            if (sampling_config["mirostat"]) params.sampling.mirostat = sampling_config["mirostat"].as<int32_t>();
+            if (sampling_config["top_n_sigma"]) params.sampling.top_n_sigma = sampling_config["top_n_sigma"].as<float>();
+            if (sampling_config["mirostat_tau"]) params.sampling.mirostat_tau = sampling_config["mirostat_tau"].as<float>();
+            if (sampling_config["mirostat_eta"]) params.sampling.mirostat_eta = sampling_config["mirostat_eta"].as<float>();
+            if (sampling_config["ignore_eos"]) params.sampling.ignore_eos = sampling_config["ignore_eos"].as<bool>();
+            if (sampling_config["no_perf"]) params.sampling.no_perf = sampling_config["no_perf"].as<bool>();
+            if (sampling_config["timing_per_token"]) params.sampling.timing_per_token = sampling_config["timing_per_token"].as<bool>();
+            if (sampling_config["grammar"]) params.sampling.grammar = sampling_config["grammar"].as<std::string>();
+            if (sampling_config["grammar_lazy"]) params.sampling.grammar_lazy = sampling_config["grammar_lazy"].as<bool>();
+            
+            if (sampling_config["dry_sequence_breakers"]) {
+                params.sampling.dry_sequence_breakers.clear();
+                for (const auto & breaker : sampling_config["dry_sequence_breakers"]) {
+                    params.sampling.dry_sequence_breakers.push_back(breaker.as<std::string>());
+                }
+            }
+        }
+        
+        // Speculative parameters
+        if (config["speculative"]) {
+            const auto & spec_config = config["speculative"];
+            if (spec_config["n_ctx"]) params.speculative.n_ctx = spec_config["n_ctx"].as<int32_t>();
+            if (spec_config["n_max"]) params.speculative.n_max = spec_config["n_max"].as<int32_t>();
+            if (spec_config["n_min"]) params.speculative.n_min = spec_config["n_min"].as<int32_t>();
+            if (spec_config["n_gpu_layers"]) params.speculative.n_gpu_layers = spec_config["n_gpu_layers"].as<int32_t>();
+            if (spec_config["p_split"]) params.speculative.p_split = spec_config["p_split"].as<float>();
+            if (spec_config["p_min"]) params.speculative.p_min = spec_config["p_min"].as<float>();
+            
+            if (spec_config["model"]) {
+                const auto & model_config = spec_config["model"];
+                if (model_config["path"]) params.speculative.model.path = model_config["path"].as<std::string>();
+                if (model_config["url"]) params.speculative.model.url = model_config["url"].as<std::string>();
+                if (model_config["hf_repo"]) params.speculative.model.hf_repo = model_config["hf_repo"].as<std::string>();
+                if (model_config["hf_file"]) params.speculative.model.hf_file = model_config["hf_file"].as<std::string>();
+            }
+        }
+        
+        if (config["antiprompt"]) {
+            params.antiprompt.clear();
+            for (const auto & antiprompt : config["antiprompt"]) {
+                params.antiprompt.push_back(antiprompt.as<std::string>());
+            }
+        }
+        
+        return true;
+    } catch (const YAML::Exception & e) {
+        LOG_ERR("Error parsing YAML config file '%s': %s\n", config_file.c_str(), e.what());
+        return false;
+    } catch (const std::exception & e) {
+        LOG_ERR("Error loading YAML config file '%s': %s\n", config_file.c_str(), e.what());
+        return false;
+    }
 }
 
 common_arg & common_arg::set_examples(std::initializer_list<enum llama_example> examples) {
@@ -1227,6 +1391,20 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
             ctx_arg.params = params_org;
             return false;
         }
+        
+        // Load YAML config if specified
+        if (!ctx_arg.params.config_file.empty()) {
+            if (!common_params_load_from_yaml(ctx_arg.params.config_file, ctx_arg.params)) {
+                ctx_arg.params = params_org;
+                return false;
+            }
+            
+            if (!common_params_parse_ex(argc, argv, ctx_arg)) {
+                ctx_arg.params = params_org;
+                return false;
+            }
+        }
+        
         if (ctx_arg.params.usage) {
             common_params_print_usage(ctx_arg);
             if (ctx_arg.print_usage) {
@@ -1315,6 +1493,13 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         "print source-able bash completion script for llama.cpp",
         [](common_params & params) {
             params.completion = true;
+        }
+    ));
+    add_opt(common_arg(
+        {"--config"}, "FNAME",
+        "path to a YAML config file (default: none)",
+        [](common_params & params, const std::string & value) {
+            params.config_file = value;
         }
     ));
     add_opt(common_arg(

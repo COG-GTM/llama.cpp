@@ -88,6 +88,7 @@ In this section, we cover the most commonly used options for running the `llama-
 
 -   `-m FNAME, --model FNAME`: Specify the path to the LLaMA model file (e.g., `models/gemma-1.1-7b-it.Q4_K_M.gguf`; inferred from `--model-url` if set).
 -   `-mu MODEL_URL --model-url MODEL_URL`: Specify a remote http url to download the file (e.g [https://huggingface.co/ggml-org/gemma-1.1-7b-it-Q4_K_M-GGUF/resolve/main/gemma-1.1-7b-it.Q4_K_M.gguf?download=true](https://huggingface.co/ggml-org/gemma-1.1-7b-it-Q4_K_M-GGUF/resolve/main/gemma-1.1-7b-it.Q4_K_M.gguf?download=true)).
+-   `--config FNAME`: Specify a YAML configuration file to load settings from. Command-line arguments will override config file values.
 -   `-i, --interactive`: Run the program in interactive mode, allowing you to provide input directly and receive real-time responses.
 -   `-n N, --n-predict N`: Set the number of tokens to predict when generating text. Adjusting this value can influence the length of the generated text.
 -   `-c N, --ctx-size N`: Set the size of the prompt context. The default is 4096, but if a LLaMA model was built with a longer context, increasing this value will provide better results for longer input/inference.
@@ -375,6 +376,59 @@ For information about 4-bit quantization, which can significantly improve perfor
 You can add LoRA adapters using `--lora` or `--lora-scaled`. For example: `--lora my_adapter_1.gguf --lora my_adapter_2.gguf ...` or `--lora-scaled lora_task_A.gguf 0.5 --lora-scaled lora_task_B.gguf 0.5`.
 
 LoRA adapters should be in GGUF format. To convert from Hugging Face format use the `convert-lora-to-gguf.py` script. LoRA adapters are loaded separately and applied during inference - they are not merged with the main model. This means that mmap model loading is fully supported when using LoRA adapters. The old `--lora-base` flag has been removed now that merging is no longer performed.
+
+## YAML Configuration Files
+
+The `llama-cli` program supports loading configuration from YAML files using the `--config` option. This allows you to store commonly used settings in a file and avoid typing long command lines repeatedly.
+
+### Basic Usage
+
+```bash
+./llama-cli --config examples/config.yaml
+```
+
+### Configuration File Structure
+
+The YAML config file mirrors the command-line options structure. Here's an example:
+
+```yaml
+# Basic model configuration
+model:
+  path: "models/gemma-1.1-7b-it.Q4_K_M.gguf"
+
+# Generation parameters
+n_predict: 128
+n_ctx: 4096
+n_gpu_layers: 32
+
+# Sampling parameters
+sampling:
+  temp: 0.8
+  top_k: 40
+  top_p: 0.95
+  seed: 42
+
+# Interactive settings
+interactive: true
+use_color: true
+```
+
+### Precedence Rules
+
+- Command-line arguments always override config file values
+- Config file values override default values
+- Environment variables work as usual
+
+### Example Usage
+
+```bash
+# Use config file with CLI overrides
+./llama-cli --config my-config.yaml --temp 0.9 --n-predict 256
+
+# Config sets model and basic params, CLI overrides temperature and prediction length
+```
+
+See `examples/config.yaml` for a comprehensive example with all available options.
 
 ## Additional Options
 
