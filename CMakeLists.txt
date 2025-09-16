@@ -197,7 +197,7 @@ if (LLAMA_YAML_CPP)
     if (PkgConfig_FOUND)
         pkg_check_modules(YAML_CPP QUIET yaml-cpp)
     endif()
-    
+
     if (NOT YAML_CPP_FOUND)
         find_package(yaml-cpp QUIET)
         if (yaml-cpp_FOUND)
@@ -205,7 +205,7 @@ if (LLAMA_YAML_CPP)
             set(YAML_CPP_INCLUDE_DIRS ${yaml-cpp_INCLUDE_DIRS})
         endif()
     endif()
-    
+
     if (NOT YAML_CPP_FOUND AND NOT yaml-cpp_FOUND)
         message(STATUS "yaml-cpp not found, disabling YAML config support")
         set(LLAMA_YAML_CPP OFF)

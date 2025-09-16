@@ -179,7 +179,6 @@ int main(void) {
 
 #ifdef LLAMA_YAML_CPP
     printf("test-arg-parser: testing YAML config functionality\n\n");
-    
     std::string yaml_content = R"(
 model: "test_model.gguf"
 threads: 8
@@ -195,12 +194,10 @@ antiprompt:
   - "User:"
   - "Stop"
 )";
-    
     std::string temp_config = "/tmp/test_config.yaml";
     std::ofstream config_file(temp_config);
     config_file << yaml_content;
     config_file.close();
-    
     argv = {"binary_name", "--config", temp_config.c_str()};
     assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
     assert(params.model.path == "test_model.gguf");
@@ -216,28 +213,22 @@ antiprompt:
     assert(params.antiprompt.size() == 2);
     assert(params.antiprompt[0] == "User:");
     assert(params.antiprompt[1] == "Stop");
-    
     argv = {"binary_name", "--config", temp_config.c_str(), "-t", "16", "--ctx-size", "8192"};
     assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
     assert(params.model.path == "test_model.gguf");  // from config
     assert(params.cpuparams.n_threads == 16);        // overridden by CLI
     assert(params.n_ctx == 8192);                    // overridden by CLI
     assert(params.sampling.temp == 0.7f);            // from config
-    
     std::string invalid_yaml = "/tmp/invalid_config.yaml";
     std::ofstream invalid_file(invalid_yaml);
     invalid_file << "invalid: yaml: content: [unclosed";
     invalid_file.close();
-    
     argv = {"binary_name", "--config", invalid_yaml.c_str()};
     assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
-    
     argv = {"binary_name", "--config", "/tmp/nonexistent_config.yaml"};
     assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
-    
     std::remove(temp_config.c_str());
     std::remove(invalid_yaml.c_str());
-    
     printf("test-arg-parser: YAML config tests passed\n\n");
 #else
     printf("test-arg-parser: YAML config support not compiled, skipping YAML tests\n\n");

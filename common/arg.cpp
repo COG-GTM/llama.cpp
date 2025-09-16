@@ -74,10 +74,9 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
     if (config_file.empty()) {
         return true;
     }
-    
+
     try {
         YAML::Node config = YAML::LoadFile(config_file);
-        
         // Model parameters
         if (config["model"]) {
             params.model.path = config["model"].as<std::string>();
@@ -97,7 +96,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["hf_token"]) {
             params.hf_token = config["hf_token"].as<std::string>();
         }
-        
+
         // Context and prediction parameters
         if (config["ctx_size"]) {
             params.n_ctx = config["ctx_size"].as<int32_t>();
@@ -123,7 +122,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["sequences"]) {
             params.n_sequences = config["sequences"].as<int32_t>();
         }
-        
+
         // CPU parameters
         if (config["threads"]) {
             params.cpuparams.n_threads = config["threads"].as<int>();
@@ -131,7 +130,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["threads_batch"]) {
             params.cpuparams_batch.n_threads = config["threads_batch"].as<int>();
         }
-        
+
         // GPU parameters
         if (config["n_gpu_layers"]) {
             params.n_gpu_layers = config["n_gpu_layers"].as<int32_t>();
@@ -139,7 +138,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["main_gpu"]) {
             params.main_gpu = config["main_gpu"].as<int32_t>();
         }
-        
+
         // Sampling parameters
         if (config["seed"]) {
             params.sampling.seed = config["seed"].as<uint32_t>();
@@ -180,7 +179,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["mirostat_eta"]) {
             params.sampling.mirostat_eta = config["mirostat_eta"].as<float>();
         }
-        
+
         // Prompt and system parameters
         if (config["prompt"]) {
             params.prompt = config["prompt"].as<std::string>();
@@ -194,7 +193,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["prompt_cache"]) {
             params.path_prompt_cache = config["prompt_cache"].as<std::string>();
         }
-        
+
         // Input/Output parameters
         if (config["input_prefix"]) {
             params.input_prefix = config["input_prefix"].as<std::string>();
@@ -202,23 +201,23 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
         if (config["input_suffix"]) {
             params.input_suffix = config["input_suffix"].as<std::string>();
         }
-        
+
         if (config["verbose"]) {
             params.verbosity = config["verbose"].as<int32_t>();
         }
-        
+
         if (config["conversation"]) {
             bool conv = config["conversation"].as<bool>();
             params.conversation_mode = conv ? COMMON_CONVERSATION_MODE_ENABLED : COMMON_CONVERSATION_MODE_DISABLED;
         }
-        
+
         if (config["interactive"]) {
             params.interactive = config["interactive"].as<bool>();
         }
         if (config["interactive_first"]) {
             params.interactive_first = config["interactive_first"].as<bool>();
         }
-        
+
         if (config["antiprompt"]) {
             if (config["antiprompt"].IsSequence()) {
                 for (const auto & item : config["antiprompt"]) {
@@ -228,7 +227,7 @@ static bool common_params_load_from_yaml(const std::string & config_file, common
                 params.antiprompt.push_back(config["antiprompt"].as<std::string>());
             }
         }
-        
+
         return true;
     } catch (const YAML::Exception & e) {
         fprintf(stderr, "Error parsing YAML config file '%s': %s\n", config_file.c_str(), e.what());
