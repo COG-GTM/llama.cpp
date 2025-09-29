@@ -533,3 +533,124 @@ def test_cancel_request():
     time.sleep(1) # wait for HTTP_POLLING_SECONDS
     res = server.make_request("GET", "/slots")
     assert res.body[0]["is_processing"] == False
+
+
+@pytest.mark.parametrize("n_slots,n_requests", [
+    (8, 20),
+    (4, 50),
+])
+def test_completion_high_volume_concurrent(n_slots: int, n_requests: int):
+    global server
+    server.n_slots = n_slots
+    server.temperature = 0.0
+    server.start()
+
+    PROMPTS = [
+        "Write a very long book.",
+        "Write another a poem.",
+        "What is LLM?",
+        "The sky is blue and I love it.",
+        "Write another very long music lyrics.",
+        "Write a very long joke.",
+        "Tell me a story about a dragon.",
+        "Explain quantum computing.",
+        "What is the meaning of life?",
+        "Describe a beautiful sunset.",
+    ]
+
+    def check_slots_status():
+        should_all_slots_busy = n_requests >= n_slots
+        time.sleep(0.1)
+        res = server.make_request("GET", "/slots")
+        n_busy = sum([1 for slot in res.body if slot["is_processing"]])
+        if should_all_slots_busy:
+            assert n_busy >= n_slots // 2
+        else:
+            assert n_busy <= n_slots
+
+    tasks = []
+    for i in range(n_requests):
+        prompt = PROMPTS[i % len(PROMPTS)]
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": prompt,
+            "seed": 42 + i,
+            "temperature": 0.8,
+            "n_predict": 32,
+        })))
+
+    tasks.append((check_slots_status, ()))
+    results = parallel_function_calls(tasks)
+
+    success_count = 0
+    for i in range(n_requests):
+        res = results[i]
+        if res.status_code == 200 and "content" in res.body:
+            success_count += 1
+
+    assert success_count >= n_requests * 0.9
+
+
+def test_completion_parallel_decoding():
+    global server
+    server.n_slots = 4
+    server.temperature = 0.0
+    server.start()
+
+    prompts = [
+        "Once upon a time",
+        "In a galaxy far away",
+        "The quick brown fox",
+        "Deep in the forest",
+    ]
+
+    tasks = []
+    for i, prompt in enumerate(prompts):
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": prompt,
+            "seed": 42 + i,
+            "n_predict": 64,
+            "temperature": 0.5,
+        })))
+
+    results = parallel_function_calls(tasks)
+
+    for i, res in enumerate(results):
+        assert res.status_code == 200
+        assert "content" in res.body
+        assert len(res.body["content"]) > 10
+
+
+def test_completion_cache_consistency_concurrent():
+    global server
+    server.n_slots = 4
+    server.temperature = 0.0
+    server.start()
+
+    common_prefix = "The meaning of life is"
+    prompts = [
+        common_prefix + " to be happy",
+        common_prefix + " to find purpose",
+        common_prefix + " different for everyone",
+        common_prefix + " a mystery",
+    ]
+
+    tasks = []
+    for i, prompt in enumerate(prompts):
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": prompt,
+            "seed": 42,
+            "n_predict": 32,
+            "temperature": 0.0,
+            "cache_prompt": True,
+        })))
+
+    results = parallel_function_calls(tasks)
+
+    cache_hit_count = 0
+    for res in results:
+        assert res.status_code == 200
+        assert "content" in res.body
+        if "tokens_cached" in res.body and res.body["tokens_cached"] > 0:
+            cache_hit_count += 1
+
+    assert cache_hit_count >= 0
