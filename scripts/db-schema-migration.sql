@@ -70,7 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_memory_leak_logs_commit ON memory_leak_logs(build
 CREATE INDEX IF NOT EXISTS idx_memory_leak_logs_time ON memory_leak_logs(test_time);
 
 CREATE VIEW IF NOT EXISTS latest_baselines AS
-SELECT 
+SELECT
     b.baseline_name,
     b.commit_sha,
     b.branch_name,
@@ -83,7 +83,7 @@ GROUP BY b.id
 ORDER BY b.created_at DESC;
 
 CREATE VIEW IF NOT EXISTS regression_summary AS
-SELECT 
+SELECT
     current_commit,
     COUNT(*) as total_regressions,
     SUM(CASE WHEN severity = 'critical' THEN 1 ELSE 0 END) as critical_count,
@@ -95,7 +95,7 @@ GROUP BY current_commit
 ORDER BY total_regressions DESC;
 
 CREATE VIEW IF NOT EXISTS memory_leak_summary AS
-SELECT 
+SELECT
     build_commit,
     COUNT(*) as total_tests,
     SUM(CASE WHEN memory_status = 'LLAMA_MEMORY_STATUS_SUCCESS' THEN 1 ELSE 0 END) as passed_tests,
@@ -110,7 +110,7 @@ AFTER UPDATE ON regression_alerts
 FOR EACH ROW
 WHEN OLD.status != NEW.status
 BEGIN
-    UPDATE regression_alerts 
+    UPDATE regression_alerts
     SET alert_time = datetime('now')
     WHERE id = NEW.id;
 END;

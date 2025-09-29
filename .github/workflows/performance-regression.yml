@@ -48,7 +48,7 @@ env:
 jobs:
   performance-cpu:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      
+
       - name: Install Python dependencies
         run: |
           pip install GitPython tabulate matplotlib
@@ -123,7 +123,7 @@ jobs:
             --current ${{ env.RESULTS_DB }} \
             --threshold ${{ env.REGRESSION_THRESHOLD }} \
             --output regression-report.md
-          
+
           # Set output for subsequent steps
           if [ -f regression-detected.flag ]; then
             echo "regression=true" >> $GITHUB_OUTPUT
@@ -148,13 +148,13 @@ jobs:
           script: |
             const fs = require('fs');
             let report = 'Performance Regression Test Results (CPU)\n\n';
-            
+
             if (fs.existsSync('regression-report.md')) {
               report += fs.readFileSync('regression-report.md', 'utf8');
             } else {
               report += 'No regression report generated.';
             }
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -178,7 +178,7 @@ jobs:
   performance-cuda:
     runs-on: gpu-runner
     if: false  # Disabled by default - enable when GPU runners are available
-    
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
@@ -189,7 +189,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      
+
       - name: Install Python dependencies
         run: |
           pip install GitPython tabulate matplotlib
@@ -253,7 +253,7 @@ jobs:
             --current ${{ env.RESULTS_DB }} \
             --threshold ${{ env.REGRESSION_THRESHOLD }} \
             --output regression-report-cuda.md
-          
+
           if [ -f regression-detected.flag ]; then
             echo "regression=true" >> $GITHUB_OUTPUT
           else
@@ -277,13 +277,13 @@ jobs:
           script: |
             const fs = require('fs');
             let report = 'Performance Regression Test Results (CUDA)\n\n';
-            
+
             if (fs.existsSync('regression-report-cuda.md')) {
               report += fs.readFileSync('regression-report-cuda.md', 'utf8');
             } else {
               report += 'No regression report generated.';
             }
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -306,7 +306,7 @@ jobs:
 
   performance-metal:
     runs-on: macos-14  # macOS with Apple Silicon for Metal testing
-    
+
     steps:
       - name: Clone
         uses: actions/checkout@v4
@@ -317,7 +317,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      
+
       - name: Install Python dependencies
         run: |
           pip install GitPython tabulate matplotlib
@@ -382,7 +382,7 @@ jobs:
             --current ${{ env.RESULTS_DB }} \
             --threshold ${{ env.REGRESSION_THRESHOLD }} \
             --output regression-report-metal.md
-          
+
           if [ -f regression-detected.flag ]; then
             echo "regression=true" >> $GITHUB_OUTPUT
           else
@@ -406,13 +406,13 @@ jobs:
           script: |
             const fs = require('fs');
             let report = 'Performance Regression Test Results (Metal)\n\n';
-            
+
             if (fs.existsSync('regression-report-metal.md')) {
               report += fs.readFileSync('regression-report-metal.md', 'utf8');
             } else {
               report += 'No regression report generated.';
             }
-            
+
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,

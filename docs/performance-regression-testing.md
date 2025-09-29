@@ -289,7 +289,7 @@ If the baseline cache is empty or expired:
 Regressions can be marked as false positives in the database:
 
 ```sql
-UPDATE regression_alerts 
+UPDATE regression_alerts
 SET status = 'false_positive', notes = 'Expected due to architectural change'
 WHERE id = <alert_id>;
 ```
