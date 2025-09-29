@@ -8,7 +8,7 @@ if (LLAMA_SANITIZE_THREAD)
         add_compile_options(-fsanitize=thread -g -O1)
         add_link_options(-fsanitize=thread)
         message(STATUS "ThreadSanitizer enabled for concurrent testing")
-        
+
         set(ENV{TSAN_OPTIONS} "halt_on_error=1:second_deadlock_stack=1")
     else()
         message(WARNING "ThreadSanitizer is only supported with GCC or Clang")
