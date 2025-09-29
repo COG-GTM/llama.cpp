@@ -40,7 +40,7 @@ def validate_tensor_conversion(
     max_rmse_threshold: float = 0.01,
     max_error_threshold: float = 0.1,
     verbose: bool = False
-) -> tuple[bool, dict[str, float]]:
+) -> tuple[bool, dict[str, float | str]]:
     """
     Validate accuracy of a single tensor conversion.
 
