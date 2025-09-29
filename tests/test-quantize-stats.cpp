@@ -200,7 +200,7 @@ static void compare_perplexity_across_formats(
     (void)model;
     (void)ctx;
     (void)test_tokens;
-    
+
     printf("\n=== Perplexity Comparison Across Quantization Formats ===\n");
     printf("Note: Lower perplexity indicates better model quality\n\n");
 
