@@ -6407,6 +6407,15 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     test_cases.emplace_back(new test_falcon(2));
 #endif
 
+    const char * test_errors = getenv("GGML_TEST_ERRORS");
+    if (test_errors && atoi(test_errors) != 0) {
+        for (ggml_type type : {GGML_TYPE_F32, GGML_TYPE_F16}) {
+            test_cases.emplace_back(new test_add1(type, {128, 1, 1, 1}));
+            test_cases.emplace_back(new test_unary(GGML_UNARY_OP_GELU, type, {1024, 4, 1, 1}, 0));
+            test_cases.emplace_back(new test_bin_bcast(ggml_add, type, {2048, 2048, 1, 1}, {2048, 1, 1, 1}));
+        }
+    }
+
     return test_cases;
 }
 

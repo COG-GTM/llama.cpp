@@ -75,9 +75,37 @@ struct ggml_tallocr ggml_tallocr_new(ggml_backend_buffer_t buffer) {
     return talloc;
 }
 
+// Error injection for testing
+static bool ggml_alloc_should_fail(size_t size) {
+    const char * fail_threshold = getenv("GGML_ALLOC_FAIL_THRESHOLD");
+    if (fail_threshold) {
+        size_t threshold = (size_t)atoll(fail_threshold);
+        if (size >= threshold) {
+            return true;
+        }
+    }
+    
+    const char * fail_count = getenv("GGML_ALLOC_FAIL_COUNT");
+    if (fail_count) {
+        static int alloc_count = 0;
+        int max_count = atoi(fail_count);
+        if (++alloc_count > max_count) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
 enum ggml_status ggml_tallocr_alloc(struct ggml_tallocr * talloc, struct ggml_tensor * tensor) {
     size_t size = ggml_backend_buffer_get_alloc_size(talloc->buffer, tensor);
     size = GGML_PAD(size, talloc->alignment);
+
+    if (ggml_alloc_should_fail(size)) {
+        GGML_LOG_ERROR("%s: injected allocation failure for testing (size=%zu)\n", __func__, size);
+        return GGML_STATUS_FAILED;
+    }
 
     if (talloc->offset + size > ggml_backend_buffer_get_size(talloc->buffer)) {
         GGML_LOG_ERROR("%s: not enough space in the buffer to allocate %s (needed %zu, available %zu)\n",
@@ -140,6 +168,11 @@ static size_t ggml_dyn_tallocr_alloc(struct ggml_dyn_tallocr * alloc, size_t siz
     size = aligned_offset(NULL, size, alloc->alignment);
 
     AT_PRINTF("%s: allocating %s (%zu bytes) - ", __func__, tensor->name, size);
+
+    if (ggml_alloc_should_fail(size)) {
+        AT_PRINTF("injected failure\n");
+        return SIZE_MAX;
+    }
 
     size_t max_avail = 0;
 
