@@ -79,14 +79,12 @@ static void test_memory_pressure() {
     }
 
     std::vector<ggml_tensor*> tensors;
-    bool allocation_succeeded __attribute__((unused)) = true;
 
     for (int i = 0; i < 100; i++) {
         ggml_tensor* tensor = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 256);
         if (tensor && tensor->data) {
             tensors.push_back(tensor);
         } else {
-            allocation_succeeded = false;
             break;
         }
     }
