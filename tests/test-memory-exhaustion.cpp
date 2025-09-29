@@ -8,6 +8,14 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+    #define setenv_portable(name, value) _putenv_s(name, value)
+    #define unsetenv_portable(name) _putenv_s(name, "")
+#else
+    #define setenv_portable(name, value) setenv(name, value, 1)
+    #define unsetenv_portable(name) unsetenv(name)
+#endif
+
 enum memory_exhaustion_scenario {
     MEM_EXHAUST_SMALL_ALLOC = 1,
     MEM_EXHAUST_MEDIUM_ALLOC,
@@ -40,23 +48,23 @@ static bool test_memory_exhaustion_scenario(ggml_backend_t backend, enum memory_
 
     switch (scenario) {
         case MEM_EXHAUST_SMALL_ALLOC:
-            setenv("GGML_ALLOC_FAIL_THRESHOLD", "1024", 1);
+            setenv_portable("GGML_ALLOC_FAIL_THRESHOLD", "1024");
             break;
         case MEM_EXHAUST_MEDIUM_ALLOC:
-            setenv("GGML_ALLOC_FAIL_THRESHOLD", "1048576", 1);
+            setenv_portable("GGML_ALLOC_FAIL_THRESHOLD", "1048576");
             break;
         case MEM_EXHAUST_LARGE_ALLOC:
-            setenv("GGML_ALLOC_FAIL_THRESHOLD", "10485760", 1);
+            setenv_portable("GGML_ALLOC_FAIL_THRESHOLD", "10485760");
             break;
         case MEM_EXHAUST_MANY_ALLOCS:
-            setenv("GGML_ALLOC_FAIL_COUNT", "10", 1);
+            setenv_portable("GGML_ALLOC_FAIL_COUNT", "10");
             break;
         case MEM_EXHAUST_BUFFER_OVERFLOW:
-            setenv("GGML_ALLOC_FAIL_THRESHOLD", "100", 1);
+            setenv_portable("GGML_ALLOC_FAIL_THRESHOLD", "100");
             break;
         default:
-            unsetenv("GGML_ALLOC_FAIL_THRESHOLD");
-            unsetenv("GGML_ALLOC_FAIL_COUNT");
+            unsetenv_portable("GGML_ALLOC_FAIL_THRESHOLD");
+            unsetenv_portable("GGML_ALLOC_FAIL_COUNT");
             break;
     }
 
@@ -72,7 +80,7 @@ static bool test_memory_exhaustion_scenario(ggml_backend_t backend, enum memory_
     }
 
     ggml_tensor * a = nullptr;
-    
+
     switch (scenario) {
         case MEM_EXHAUST_SMALL_ALLOC:
             a = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 256);
@@ -124,9 +132,9 @@ static bool test_memory_exhaustion_scenario(ggml_backend_t backend, enum memory_
     }
 
     ggml_free(ctx);
-    
-    unsetenv("GGML_ALLOC_FAIL_THRESHOLD");
-    unsetenv("GGML_ALLOC_FAIL_COUNT");
+
+    unsetenv_portable("GGML_ALLOC_FAIL_THRESHOLD");
+    unsetenv_portable("GGML_ALLOC_FAIL_COUNT");
 
     return test_passed;
 }

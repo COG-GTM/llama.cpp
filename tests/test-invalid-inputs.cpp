@@ -8,6 +8,14 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+    #define setenv_portable(name, value) _putenv_s(name, value)
+    #define unsetenv_portable(name) _putenv_s(name, "")
+#else
+    #define setenv_portable(name, value) setenv(name, value, 1)
+    #define unsetenv_portable(name) unsetenv(name)
+#endif
+
 enum invalid_input_scenario {
     INVALID_TENSOR_SHAPE_NEGATIVE = 1,
     INVALID_TENSOR_SHAPE_ZERO,
@@ -64,7 +72,7 @@ static bool test_invalid_input_scenario(enum invalid_input_scenario scenario) {
         case INVALID_TENSOR_SHAPE_MISMATCH: {
             ggml_tensor * a = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 10, 20);
             ggml_tensor * b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 15, 25);
-            
+
             if (a && b) {
                 bool shapes_different = (a->ne[0] != b->ne[0]) || (a->ne[1] != b->ne[1]);
                 if (shapes_different) {
@@ -80,7 +88,7 @@ static bool test_invalid_input_scenario(enum invalid_input_scenario scenario) {
         case INVALID_TENSOR_TYPE_MISMATCH: {
             ggml_tensor * a = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 100);
             ggml_tensor * b = ggml_new_tensor_1d(ctx, GGML_TYPE_F16, 100);
-            
+
             if (a && b && a->type != b->type) {
                 printf("  - \033[1;32mOK\033[0m: type mismatch detected\n");
                 test_passed = true;
@@ -105,7 +113,7 @@ static bool test_invalid_input_scenario(enum invalid_input_scenario scenario) {
         case INVALID_OPERATION_INCOMPATIBLE: {
             ggml_tensor * a = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 100);
             ggml_tensor * b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, 10, 20);
-            
+
             if (a && b) {
                 bool incompatible = (a->ne[1] != b->ne[1]) || (a->ne[0] != 100 && b->ne[0] != 10);
                 if (incompatible) {

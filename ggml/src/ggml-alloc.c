@@ -84,7 +84,7 @@ static bool ggml_alloc_should_fail(size_t size) {
             return true;
         }
     }
-    
+
     const char * fail_count = getenv("GGML_ALLOC_FAIL_COUNT");
     if (fail_count) {
         static int alloc_count = 0;
@@ -93,7 +93,7 @@ static bool ggml_alloc_should_fail(size_t size) {
             return true;
         }
     }
-    
+
     return false;
 }
 
