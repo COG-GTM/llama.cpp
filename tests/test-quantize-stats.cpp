@@ -197,15 +197,17 @@ static void compare_perplexity_across_formats(
     const std::vector<int> & test_tokens,
     const std::vector<ggml_type> & quant_types
 ) {
+    (void)model;
+    (void)ctx;
+    (void)test_tokens;
+    
     printf("\n=== Perplexity Comparison Across Quantization Formats ===\n");
     printf("Note: Lower perplexity indicates better model quality\n\n");
 
-    const int n_vocab = llama_n_vocab(model);
-    std::vector<int> targets(test_tokens.begin() + 1, test_tokens.end());
-
     for (ggml_type qtype : quant_types) {
+        const auto * qfns_cpu = ggml_get_type_traits_cpu(qtype);
         const auto * qfns = ggml_get_type_traits(qtype);
-        if (!qfns->from_float || !qfns->to_float) continue;
+        if (!qfns_cpu->from_float || !qfns->to_float) continue;
 
         printf("%-12s: perplexity calculation requires model inference\n", ggml_type_name(qtype));
     }
