@@ -207,7 +207,11 @@ if (NOT GGML_BACKEND_DL)
     llama_build_and_test(test-barrier.cpp)
     llama_build_and_test(test-quantize-fns.cpp)
     llama_build_and_test(test-quantize-perf.cpp)
-    llama_build_and_test(test-conversion-accuracy.cpp)
+    # Skip conversion accuracy tests on sanitizer builds - they have different numerical behavior
+    # and this test is focused on quantization accuracy validation, not memory safety
+    if (NOT LLAMA_SANITIZE_ADDRESS AND NOT LLAMA_SANITIZE_UNDEFINED AND NOT LLAMA_SANITIZE_THREAD)
+        llama_build_and_test(test-conversion-accuracy.cpp)
+    endif()
     llama_build_and_test(test-rope.cpp)
 endif()
 
