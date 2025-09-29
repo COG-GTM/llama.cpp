@@ -5559,7 +5559,7 @@ struct test_error_invalid_view : public test_case {
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         ggml_tensor * src = ggml_new_tensor_2d(ctx, type, ne_src[0], ne_src[1]);
-        ggml_tensor * view = ggml_view_2d(ctx, src, ne_view[0], ne_view[1], 
+        ggml_tensor * view = ggml_view_2d(ctx, src, ne_view[0], ne_view[1],
                                          ne_src[0] * ggml_type_size(type), offset);
         return view;
     }
