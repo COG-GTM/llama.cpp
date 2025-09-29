@@ -326,6 +326,14 @@ static void test_mixed_type_allocations() {
 int main() {
     printf("=== Memory Exhaustion and Allocation Failure Tests ===\n\n");
 
+    ggml_backend_t test_backend = ggml_backend_init_by_type(GGML_BACKEND_DEVICE_TYPE_CPU, NULL);
+    if (!test_backend) {
+        printf("CPU backend not available, skipping tests\n");
+        printf("\nTotal: 0 tests, 0 passed, 0 failed (skipped)\n");
+        return 0;
+    }
+    ggml_backend_free(test_backend);
+
     test_basic_allocation();
     test_memory_pressure();
     test_graph_allocator_small_buffer();
