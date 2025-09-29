@@ -10,15 +10,13 @@ memory consumption that could indicate performance issues.
 """
 
 import argparse
-import json
 import logging
 import os
 import re
 import sqlite3
 import sys
 from datetime import datetime
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 logger = logging.getLogger("memory-leak-monitor")
 
@@ -36,7 +34,7 @@ EXCESSIVE_MEMORY_THRESHOLD_GB = 16  # 16 GB excessive usage threshold
 class MemoryLeakMonitor:
     """Monitor memory usage and detect potential leaks."""
 
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize memory leak monitor.
 
