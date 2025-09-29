@@ -170,7 +170,13 @@ class RegressionDetector:
                 "message": "No baseline results available for comparison",
                 "regressions": [],
                 "improvements": [],
-                "stable": []
+                "stable": [],
+                "summary": {
+                    "total_benchmarks": 0,
+                    "regressions_found": 0,
+                    "improvements_found": 0,
+                    "stable_benchmarks": 0
+                }
             }
 
         if not current_results:
@@ -180,7 +186,13 @@ class RegressionDetector:
                 "message": "No current results found",
                 "regressions": [],
                 "improvements": [],
-                "stable": []
+                "stable": [],
+                "summary": {
+                    "total_benchmarks": len(baseline_results),
+                    "regressions_found": 0,
+                    "improvements_found": 0,
+                    "stable_benchmarks": 0
+                }
             }
 
         for baseline in baseline_results:
