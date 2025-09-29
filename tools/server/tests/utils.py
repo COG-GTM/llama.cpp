@@ -394,17 +394,17 @@ server_instances: Set[ServerProcess] = set()
 class PipelineTestProcess(ServerProcess):
     """
     Extended ServerProcess class for end-to-end pipeline testing.
-    
+
     Provides capabilities for testing complete workflows including model download,
     conversion, loading, and inference operations.
     """
-    
+
     def __init__(self):
         super().__init__()
         self.pipeline_state = "INITIAL"
         self.cli_path: str | None = None
         self.bench_path: str | None = None
-    
+
     def get_cli_path(self) -> str:
         """Get path to llama-cli binary."""
         if self.cli_path is not None:
@@ -415,7 +415,7 @@ class PipelineTestProcess(ServerProcess):
             return "../../../build/bin/Release/llama-cli.exe"
         else:
             return "../../../build/bin/llama-cli"
-    
+
     def get_bench_path(self) -> str:
         """Get path to llama-bench binary."""
         if self.bench_path is not None:
@@ -426,35 +426,35 @@ class PipelineTestProcess(ServerProcess):
             return "../../../build/bin/Release/llama-bench.exe"
         else:
             return "../../../build/bin/llama-bench"
-    
+
     def download_and_convert_model(self, model_url: str, conversion_params: dict | None = None) -> str:
         """
         Download and optionally convert a model for testing.
-        
+
         Args:
             model_url: URL or HuggingFace repo/file identifier
             conversion_params: Optional parameters for model conversion
-        
+
         Returns:
             Path to the downloaded/converted model file
         """
         self.pipeline_state = "DOWNLOADING"
-        
+
         if model_url.startswith("http"):
             model_path = download_file(model_url)
         else:
             model_path = model_url
-        
+
         self.pipeline_state = "DOWNLOADED"
         return model_path
-    
+
     def test_full_pipeline(self, model_config: dict) -> dict:
         """
         Test a complete pipeline workflow from model acquisition to inference.
-        
+
         Args:
             model_config: Configuration dict with 'model_hf_repo', 'model_hf_file', etc.
-        
+
         Returns:
             Dict containing pipeline execution results and state transitions
         """
@@ -464,77 +464,77 @@ class PipelineTestProcess(ServerProcess):
             "inference_successful": False,
             "state_transitions": []
         }
-        
+
         self.pipeline_state = "INITIAL"
         results["states"].append(self.pipeline_state)
-        
+
         for key, value in model_config.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-        
+
         self.pipeline_state = "LOADING_MODEL"
         results["states"].append(self.pipeline_state)
         results["state_transitions"].append(("INITIAL", "LOADING_MODEL"))
-        
+
         try:
             self.start()
             self.pipeline_state = "READY"
             results["states"].append(self.pipeline_state)
             results["state_transitions"].append(("LOADING_MODEL", "READY"))
             results["model_loaded"] = True
-            
+
             self.pipeline_state = "PROCESSING_PROMPT"
             results["states"].append(self.pipeline_state)
             results["state_transitions"].append(("READY", "PROCESSING_PROMPT"))
-            
+
             response = self.make_request("POST", "/completion", data={
                 "prompt": "Hello",
                 "n_predict": 8,
             })
-            
+
             if response.status_code == 200:
                 self.pipeline_state = "GENERATING"
                 results["states"].append(self.pipeline_state)
                 results["state_transitions"].append(("PROCESSING_PROMPT", "GENERATING"))
                 results["inference_successful"] = True
                 results["response"] = response.body
-        
+
         except Exception as e:
             self.pipeline_state = "ERROR"
             results["states"].append(self.pipeline_state)
             results["error"] = str(e)
-        
+
         return results
-    
+
     def validate_pipeline_state_transitions(self, expected_transitions: list) -> bool:
         """
         Validate that server went through expected state transitions.
-        
+
         Args:
             expected_transitions: List of expected (from_state, to_state) tuples
-        
+
         Returns:
             True if transitions match expected, False otherwise
         """
         return self.pipeline_state in ["READY", "GENERATING", "COMPLETED"]
-    
+
     def run_cli_command(self, args: list, input_text: str | None = None, timeout: int = 30) -> subprocess.CompletedProcess:
         """
         Execute llama-cli with given arguments.
-        
+
         Args:
             args: Command line arguments for llama-cli
             input_text: Optional stdin input for interactive mode
             timeout: Timeout in seconds
-        
+
         Returns:
             CompletedProcess with stdout, stderr, and return code
         """
         cli_path = self.get_cli_path()
         cmd = [cli_path] + [str(arg) for arg in args]
-        
+
         print(f"Running CLI command: {' '.join(cmd)}")
-        
+
         result = subprocess.run(
             cmd,
             input=input_text.encode() if input_text else None,
@@ -542,36 +542,36 @@ class PipelineTestProcess(ServerProcess):
             timeout=timeout,
             env={**os.environ, "LLAMA_CACHE": "tmp"} if "LLAMA_CACHE" not in os.environ else None,
         )
-        
+
         return result
-    
+
     def run_bench_command(self, model_path: str, additional_args: list | None = None, timeout: int = 60) -> dict:
         """
         Execute llama-bench for performance testing.
-        
+
         Args:
             model_path: Path to model file
             additional_args: Optional additional arguments
             timeout: Timeout in seconds
-        
+
         Returns:
             Dict containing benchmark results
         """
         bench_path = self.get_bench_path()
         args = [bench_path, "-m", model_path]
-        
+
         if additional_args:
             args.extend(additional_args)
-        
+
         print(f"Running bench command: {' '.join(args)}")
-        
+
         result = subprocess.run(
             args,
             capture_output=True,
             timeout=timeout,
             env={**os.environ, "LLAMA_CACHE": "tmp"} if "LLAMA_CACHE" not in os.environ else None,
         )
-        
+
         output = result.stdout.decode('utf-8')
         return {
             "returncode": result.returncode,
@@ -579,15 +579,15 @@ class PipelineTestProcess(ServerProcess):
             "stderr": result.stderr.decode('utf-8'),
             "success": result.returncode == 0
         }
-    
+
     def validate_kv_cache_behavior(self, context_size: int, prompt_tokens: int) -> dict:
         """
         Validate KV cache behavior during extended workflows.
-        
+
         Args:
             context_size: Context size to test
             prompt_tokens: Number of tokens in prompt
-        
+
         Returns:
             Dict with cache validation results
         """
@@ -604,20 +604,20 @@ class PipelineTestProcess(ServerProcess):
                     "cache_validated": False,
                     "error": str(e)
                 }
-        
+
         return {
             "cache_validated": False,
             "reason": "Server metrics not enabled"
         }
-    
+
     def test_context_management(self, prompts: list, max_context: int) -> dict:
         """
         Test context management during long inference sessions.
-        
+
         Args:
             prompts: List of prompts to process sequentially
             max_context: Maximum context size
-        
+
         Returns:
             Dict with context management test results
         """
@@ -626,7 +626,7 @@ class PipelineTestProcess(ServerProcess):
             "context_shifts": 0,
             "responses": []
         }
-        
+
         for i, prompt in enumerate(prompts):
             try:
                 response = self.make_request("POST", "/completion", data={
@@ -634,18 +634,18 @@ class PipelineTestProcess(ServerProcess):
                     "n_predict": 16,
                     "cache_prompt": True
                 })
-                
+
                 if response.status_code == 200:
                     results["prompts_processed"] += 1
                     results["responses"].append(response.body)
-                    
+
                     if "timings" in response.body:
                         results["context_shifts"] += 1
-            
+
             except Exception as e:
                 results["error"] = f"Failed at prompt {i}: {str(e)}"
                 break
-        
+
         return results
 
 

@@ -184,7 +184,7 @@ For local testing with larger models, modify the fixture configurations in `conf
 def test_my_e2e_workflow(pipeline_process, e2e_small_model_config):
     """
     Test description here.
-    
+
     Validates:
     - Point 1
     - Point 2
@@ -193,16 +193,16 @@ def test_my_e2e_workflow(pipeline_process, e2e_small_model_config):
     for key, value in e2e_small_model_config.items():
         if hasattr(pipeline_process, key):
             setattr(pipeline_process, key, value)
-    
+
     # Start server
     pipeline_process.start()
-    
+
     # Test workflow
     res = pipeline_process.make_request("POST", "/completion", data={
         "prompt": "Test",
         "n_predict": 8,
     })
-    
+
     # Assertions
     assert res.status_code == 200
     assert "content" in res.body
