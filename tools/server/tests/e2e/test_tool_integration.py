@@ -13,6 +13,7 @@ import pytest
 from utils import *
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_cli_basic_execution(pipeline_process, e2e_small_model_config):
     """
     Test basic llama-cli execution with a model.
@@ -44,6 +45,7 @@ def test_cli_basic_execution(pipeline_process, e2e_small_model_config):
     assert len(output) > 0, "CLI should produce output"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_cli_with_seed(pipeline_process, e2e_small_model_config):
     """
     Test llama-cli with deterministic seed for reproducible outputs.
@@ -82,6 +84,7 @@ def test_cli_with_seed(pipeline_process, e2e_small_model_config):
     assert len(output2) > 0
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-bench binary")
 def test_bench_basic_execution(pipeline_process, e2e_small_model_config):
     """
     Test basic llama-bench execution.
@@ -116,6 +119,7 @@ def test_bench_basic_execution(pipeline_process, e2e_small_model_config):
         "Bench output should contain performance metrics"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-bench binary")
 def test_bench_with_different_batch_sizes(pipeline_process, e2e_small_model_config):
     """
     Test llama-bench with different batch size configurations.
@@ -147,6 +151,7 @@ def test_bench_with_different_batch_sizes(pipeline_process, e2e_small_model_conf
         assert len(result["output"]) > 0
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_cli_embedding_generation(pipeline_process, e2e_embedding_model_config):
     """
     Test embedding generation using llama-cli.
@@ -175,6 +180,7 @@ def test_cli_embedding_generation(pipeline_process, e2e_embedding_model_config):
     assert result.returncode == 0, f"CLI embedding should succeed: {result.stderr.decode()}"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_tool_parameter_validation(pipeline_process, e2e_small_model_config):
     """
     Test tool parameter validation and error handling.
@@ -193,6 +199,7 @@ def test_tool_parameter_validation(pipeline_process, e2e_small_model_config):
     assert len(stderr) > 0, "Should provide error message"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_cli_context_size_parameter(pipeline_process, e2e_small_model_config):
     """
     Test llama-cli with custom context size parameter.
@@ -219,6 +226,7 @@ def test_cli_context_size_parameter(pipeline_process, e2e_small_model_config):
     assert result.returncode == 0, "CLI with custom context size should succeed"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_server_and_cli_coordination(pipeline_process, e2e_small_model_config):
     """
     Test coordination between server and CLI tool workflows.
@@ -253,6 +261,7 @@ def test_server_and_cli_coordination(pipeline_process, e2e_small_model_config):
     assert result.returncode == 0, "CLI should work after server stops"
 
 
+@pytest.mark.skipif(not is_slow_test_allowed(), reason="skipping slow test - requires llama-cli binary")
 def test_cli_json_output_format(pipeline_process, e2e_small_model_config):
     """
     Test llama-cli JSON output format.
