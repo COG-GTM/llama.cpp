@@ -9,6 +9,7 @@ import os
 import sqlite3
 import sys
 from collections.abc import Iterator, Sequence
+from datetime import datetime
 from glob import glob
 from typing import Any, Optional, Union
 
@@ -174,6 +175,11 @@ parser.add_argument("--verbose", action="store_true", help="increase output verb
 parser.add_argument("--plot", help="generate a performance comparison plot and save to specified file (e.g., plot.png)")
 parser.add_argument("--plot_x", help="parameter to use as x axis for plotting (default: n_depth)", default="n_depth")
 parser.add_argument("--plot_log_scale", action="store_true", help="use log scale for x axis in plots (off by default)")
+
+parser.add_argument("--ci-mode", action="store_true", help="Enable CI mode for automated workflows")
+parser.add_argument("--baseline-db", help="Path to baseline database for tracking performance over time")
+parser.add_argument("--save-baseline", help="Save current results as baseline to specified database path")
+parser.add_argument("--json-output", help="Export comparison results to JSON file for automated processing")
 
 known_args, unknown_args = parser.parse_known_args()
 
@@ -1091,3 +1097,23 @@ print(tabulate( # noqa: NP100
     floatfmt=".2f",
     tablefmt=known_args.output
 ))
+
+if known_args.json_output:
+    output_data = {
+        "baseline": name_baseline,
+        "compare": name_compare,
+        "tool": tool,
+        "headers": headers,
+        "table": table,
+        "timestamp": datetime.now().isoformat()
+    }
+    with open(known_args.json_output, "w") as f:
+        json.dump(output_data, f, indent=2, default=str)
+    logger.info(f"JSON output written to {known_args.json_output}")
+
+if known_args.save_baseline:
+    import shutil
+    if input_file:
+        baseline_path = known_args.save_baseline
+        shutil.copy(input_file[0], baseline_path)
+        logger.info(f"Baseline saved to {baseline_path}")

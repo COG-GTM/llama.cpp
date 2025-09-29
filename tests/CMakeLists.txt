@@ -219,3 +219,14 @@ target_link_libraries(${LLAMA_TEST_NAME} PRIVATE mtmd)
 get_filename_component(TEST_TARGET test-c.c NAME_WE)
 add_executable(${TEST_TARGET} test-c.c)
 target_link_libraries(${TEST_TARGET} PRIVATE llama)
+
+# Performance regression test suite
+if (EXISTS ${CMAKE_SOURCE_DIR}/tools/llama-bench/llama-bench.cpp)
+    llama_test_cmd(
+        ${CMAKE_BINARY_DIR}/bin/llama-bench
+        NAME test-performance-regression-cpu
+        LABEL "performance"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        ARGS -p 512 -n 128 -r 3 -o sql
+    )
+endif()
