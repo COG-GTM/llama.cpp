@@ -86,7 +86,7 @@ int main(int argc, char ** argv) {
     }
 
     const int total_threads = num_models * num_contexts;
-    
+
     for  (int m = 0; m < num_models; ++m) {
         auto * model = models[m].get();
         for (int c = 0; c < num_contexts; ++c) {
@@ -94,7 +94,7 @@ int main(int argc, char ** argv) {
                 LOG_INF("Creating context %d/%d for model %d/%d\n", c + 1, num_contexts, m + 1, num_models);
 
                 g_model_access_count++;
-                
+
                 {
                     std::unique_lock<std::mutex> lock(g_barrier_mutex);
                     g_threads_ready++;
@@ -106,7 +106,7 @@ int main(int argc, char ** argv) {
                 }
 
                 auto start_time = std::chrono::steady_clock::now();
-                
+
                 llama_context_ptr ctx { llama_init_from_model(model, cparams) };
                 if (ctx == NULL) {
                     LOG_ERR("failed to create context\n");
@@ -118,7 +118,7 @@ int main(int argc, char ** argv) {
                 auto init_time = std::chrono::steady_clock::now();
                 auto init_duration = std::chrono::duration_cast<std::chrono::milliseconds>(init_time - start_time).count();
                 if (init_duration > 5000) {
-                    LOG_WRN("Model %d/%d, Context %d/%d: slow context initialization (%ld ms)\n", 
+                    LOG_WRN("Model %d/%d, Context %d/%d: slow context initialization (%ld ms)\n",
                              m + 1, num_models, c + 1, num_contexts, (long)init_duration);
                 }
 
@@ -170,7 +170,7 @@ int main(int argc, char ** argv) {
                         return;
                     }
                     g_decode_count++;
-                    
+
                     if (i % 32 == 31) {
                         std::this_thread::yield();
                     }
@@ -190,11 +190,11 @@ int main(int argc, char ** argv) {
     LOG_INF("Model access count: %d\n", g_model_access_count.load());
     LOG_INF("Context init count: %d\n", g_context_init_count.load());
     LOG_INF("Decode operation count: %d\n", g_decode_count.load());
-    
+
     if (g_context_init_count != total_threads) {
         LOG_WRN("Warning: expected %d context inits, got %d\n", total_threads, g_context_init_count.load());
     }
-    
+
     if (failed) {
         LOG_ERR("One or more threads failed.\n");
         return 1;
