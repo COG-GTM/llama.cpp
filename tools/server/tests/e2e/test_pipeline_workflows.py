@@ -202,7 +202,7 @@ def test_pipeline_with_embedding_model(pipeline_process, e2e_embedding_model_con
 
     pipeline_process.start()
 
-    res = pipeline_process.make_request("POST", "/embeddings", data={
+    res = pipeline_process.make_request("POST", "/v1/embeddings", data={
         "input": "Hello, world!",
     })
 

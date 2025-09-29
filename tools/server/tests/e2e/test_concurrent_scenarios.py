@@ -252,7 +252,7 @@ def test_concurrent_embeddings(pipeline_process, e2e_embedding_model_config):
     tasks = [
         (
             pipeline_process.make_request,
-            ("POST", "/embeddings", {
+            ("POST", "/v1/embeddings", {
                 "input": text,
             })
         )
