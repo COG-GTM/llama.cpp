@@ -8,8 +8,8 @@ Tests cover:
 - Tool parameter validation and error handling
 """
 
+import json
 import pytest
-import os
 from utils import *
 
 
@@ -280,7 +280,6 @@ def test_cli_json_output_format(pipeline_process, e2e_small_model_config):
     output = result.stdout.decode()
     
     try:
-        import json
         json.loads(output)
     except json.JSONDecodeError:
         pass

@@ -8,7 +8,6 @@ Tests cover:
 - KV cache behavior validation during extended workflows
 """
 
-import pytest
 from utils import *
 
 
