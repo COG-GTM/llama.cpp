@@ -5433,6 +5433,48 @@ struct test_falcon : public test_llm {
     }
 };
 
+struct test_quant_conversion : public test_case {
+    const ggml_type type_src;
+    const ggml_type type_intermediate;
+    const ggml_type type_dst;
+    const std::array<int64_t, 4> ne;
+
+    std::string vars() override {
+        return VARS_TO_STR4(type_src, type_intermediate, type_dst, ne);
+    }
+
+    double max_nmse_err() override {
+        return 5e-4;
+    }
+
+    test_quant_conversion(ggml_type type_src = GGML_TYPE_F32,
+                          ggml_type type_intermediate = GGML_TYPE_Q4_0,
+                          ggml_type type_dst = GGML_TYPE_Q8_0,
+                          std::array<int64_t, 4> ne = {512, 512, 1, 1})
+        : type_src(type_src), type_intermediate(type_intermediate), type_dst(type_dst), ne(ne) {}
+
+    ggml_tensor * build_graph(ggml_context * ctx) override {
+        // Create source tensor
+        ggml_tensor * src = ggml_new_tensor(ctx, type_src, 4, ne.data());
+        ggml_set_param(src);
+        ggml_set_name(src, "src");
+
+        ggml_tensor * intermediate = ggml_new_tensor(ctx, type_intermediate, 4, ne.data());
+        ggml_set_name(intermediate, "intermediate");
+        intermediate = ggml_cpy(ctx, src, intermediate);
+
+        ggml_tensor * dst = ggml_new_tensor(ctx, type_dst, 4, ne.data());
+        ggml_set_name(dst, "dst");
+        dst = ggml_cpy(ctx, intermediate, dst);
+
+        ggml_tensor * out = ggml_new_tensor(ctx, GGML_TYPE_F32, 4, ne.data());
+        ggml_set_name(out, "out");
+        out = ggml_cpy(ctx, dst, out);
+
+        return out;
+    }
+};
+
 
 // ###########################################
 // ## Section 3: GGML Op Test Instantiation ##
@@ -5867,6 +5909,19 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     for (ggml_type type_src : {GGML_TYPE_F16, GGML_TYPE_F32}) {
         for (ggml_type type_dst : {GGML_TYPE_F16, GGML_TYPE_F32}) {
             test_cases.emplace_back(new test_cpy(type_src, type_dst, {256, 2, 3, 4}, {1, 0, 2, 3})); // cpy not-contiguous
+        }
+    }
+
+    static const ggml_type quant_conversion_test_types[] = {
+        GGML_TYPE_Q4_0, GGML_TYPE_Q4_1, GGML_TYPE_Q5_0, GGML_TYPE_Q5_1,
+        GGML_TYPE_Q8_0, GGML_TYPE_Q4_K, GGML_TYPE_Q5_K, GGML_TYPE_Q6_K
+    };
+    
+    for (ggml_type intermediate : quant_conversion_test_types) {
+        for (ggml_type dst : quant_conversion_test_types) {
+            if (intermediate != dst) {
+                test_cases.emplace_back(new test_quant_conversion(GGML_TYPE_F32, intermediate, dst, {256, 256, 1, 1}));
+            }
         }
     }
 
