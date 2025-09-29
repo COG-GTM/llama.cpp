@@ -74,7 +74,8 @@ jobs:
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -DLLAMA_FATAL_WARNINGS=ON
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
           cmake --build build --target llama-bench llama-cli -j $(nproc)
 
       - name: Download test model
@@ -210,7 +211,8 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DGGML_CUDA=ON \
-            -DLLAMA_FATAL_WARNINGS=ON
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
           cmake --build build --target llama-bench llama-cli -j $(nproc)
 
       - name: Download test model
@@ -343,7 +345,8 @@ jobs:
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
             -DGGML_METAL=ON \
-            -DLLAMA_FATAL_WARNINGS=ON
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
           cmake --build build --target llama-bench llama-cli -j $(sysctl -n hw.logicalcpu)
 
       - name: Download test model
