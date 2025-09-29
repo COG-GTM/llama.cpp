@@ -1,5 +1,20 @@
 llama_add_compile_flags()
 
+# ThreadSanitizer configuration for race condition detection
+option(LLAMA_SANITIZE_THREAD "Enable ThreadSanitizer for race condition detection" OFF)
+
+if (LLAMA_SANITIZE_THREAD)
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        add_compile_options(-fsanitize=thread -g -O1)
+        add_link_options(-fsanitize=thread)
+        message(STATUS "ThreadSanitizer enabled for concurrent testing")
+
+        set(ENV{TSAN_OPTIONS} "halt_on_error=1:second_deadlock_stack=1")
+    else()
+        message(WARNING "ThreadSanitizer is only supported with GCC or Clang")
+    endif()
+endif()
+
 function(llama_build source)
     if (DEFINED LLAMA_TEST_NAME)
         set(TEST_TARGET ${LLAMA_TEST_NAME})
@@ -186,6 +201,10 @@ llama_build_and_test(test-log.cpp)
 llama_build_and_test(test-regex-partial.cpp)
 
 llama_build_and_test(test-thread-safety.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 128 -c 256 -ub 32 -np 4 -t 2)
+
+llama_build_and_test(test-concurrent-stress.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 32 -c 512 -np 4 -t 2 LABEL "stress")
+
+llama_build_and_test(test-kv-cache-concurrent.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 32 -c 1024 -np 4 -t 2 LABEL "stress")
 
 # this fails on windows (github hosted runner) due to curl DLL not found (exit code 0xc0000135)
 if (NOT WIN32)

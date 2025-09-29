@@ -6,11 +6,21 @@
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
 #include "llama.h"
 #include "arg.h"
 #include "common.h"
 #include "log.h"
 #include "sampling.h"
+
+static std::atomic<int> g_context_init_count{0};
+static std::atomic<int> g_decode_count{0};
+static std::atomic<int> g_model_access_count{0};
+static std::mutex g_barrier_mutex;
+static std::condition_variable g_barrier_cv;
+static int g_threads_ready = 0;
 
 int main(int argc, char ** argv) {
     common_params params;
@@ -75,17 +85,41 @@ int main(int argc, char ** argv) {
         models.emplace_back(model);
     }
 
+    const int total_threads = num_models * num_contexts;
+
     for  (int m = 0; m < num_models; ++m) {
         auto * model = models[m].get();
         for (int c = 0; c < num_contexts; ++c) {
-            threads.emplace_back([&, m, c, model]() {
+            threads.emplace_back([&, m, c, model, total_threads]() {
                 LOG_INF("Creating context %d/%d for model %d/%d\n", c + 1, num_contexts, m + 1, num_models);
+
+                g_model_access_count++;
+
+                {
+                    std::unique_lock<std::mutex> lock(g_barrier_mutex);
+                    g_threads_ready++;
+                    if (g_threads_ready == total_threads) {
+                        g_barrier_cv.notify_all();
+                    } else {
+                        g_barrier_cv.wait(lock, [&]{ return g_threads_ready == total_threads; });
+                    }
+                }
+
+                auto start_time = std::chrono::steady_clock::now();
 
                 llama_context_ptr ctx { llama_init_from_model(model, cparams) };
                 if (ctx == NULL) {
                     LOG_ERR("failed to create context\n");
                     failed.store(true);
                     return;
+                }
+                g_context_init_count++;
+
+                auto init_time = std::chrono::steady_clock::now();
+                auto init_duration = std::chrono::duration_cast<std::chrono::milliseconds>(init_time - start_time).count();
+                if (init_duration > 5000) {
+                    LOG_WRN("Model %d/%d, Context %d/%d: slow context initialization (%ld ms)\n",
+                             m + 1, num_models, c + 1, num_contexts, (long)init_duration);
                 }
 
                 std::unique_ptr<common_sampler, decltype(&common_sampler_free)> sampler { common_sampler_init(model, params.sampling), common_sampler_free };
@@ -109,6 +143,7 @@ int main(int argc, char ** argv) {
                         failed.store(true);
                         return;
                     }
+                    g_decode_count++;
                 }
 
                 const auto * vocab = llama_model_get_vocab(model);
@@ -134,6 +169,11 @@ int main(int argc, char ** argv) {
                         failed.store(true);
                         return;
                     }
+                    g_decode_count++;
+
+                    if (i % 32 == 31) {
+                        std::this_thread::yield();
+                    }
                 }
 
                 LOG_INF("Model %d/%d, Context %d/%d: %s\n\n", m + 1, num_models, c + 1, num_contexts, result.c_str());
@@ -143,6 +183,16 @@ int main(int argc, char ** argv) {
 
     for (auto & thread : threads) {
         thread.join();
+    }
+
+    LOG_INF("\n=== Thread Safety Test Statistics ===\n");
+    LOG_INF("Total threads: %d\n", total_threads);
+    LOG_INF("Model access count: %d\n", g_model_access_count.load());
+    LOG_INF("Context init count: %d\n", g_context_init_count.load());
+    LOG_INF("Decode operation count: %d\n", g_decode_count.load());
+
+    if (g_context_init_count != total_threads) {
+        LOG_WRN("Warning: expected %d context inits, got %d\n", total_threads, g_context_init_count.load());
     }
 
     if (failed) {
