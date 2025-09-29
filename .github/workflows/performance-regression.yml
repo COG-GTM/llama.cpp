@@ -1,0 +1,445 @@
+name: Performance Regression Testing
+
+on:
+  workflow_dispatch: # allows manual triggering
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: [
+      '.github/workflows/performance-regression.yml',
+      '**/CMakeLists.txt',
+      '**/.cmake',
+      '**/*.h',
+      '**/*.hpp',
+      '**/*.c',
+      '**/*.cpp',
+      '**/*.cu',
+      '**/*.cuh',
+      'tools/llama-bench/**',
+      'scripts/performance-regression-detector.py',
+      'scripts/compare-llama-bench.py'
+    ]
+  push:
+    branches:
+      - master
+    paths: [
+      '.github/workflows/performance-regression.yml',
+      '**/CMakeLists.txt',
+      '**/.cmake',
+      '**/*.h',
+      '**/*.hpp',
+      '**/*.c',
+      '**/*.cpp',
+      '**/*.cu',
+      '**/*.cuh',
+      'tools/llama-bench/**',
+      'scripts/performance-regression-detector.py',
+      'scripts/compare-llama-bench.py'
+    ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  REGRESSION_THRESHOLD: 5.0
+  BASELINE_DB: performance-baseline.sqlite
+  RESULTS_DB: performance-results.sqlite
+
+jobs:
+  performance-cpu:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for baseline comparison
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install GitPython tabulate matplotlib
+
+      - name: ccache
+        uses: ggml-org/ccache-action@v1.2.16
+        with:
+          key: performance-cpu
+          evict-old-files: 1d
+
+      - name: Build llama-bench
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
+          cmake --build build --target llama-bench llama-cli -j $(nproc)
+
+      - name: Download test model
+        run: |
+          mkdir -p models
+          # Download TinyLlama test model if not present
+          if [ ! -f models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf ]; then
+            wget -q --show-progress -O models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+              https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+          fi
+
+      - name: Restore baseline database
+        id: restore-baseline
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BASELINE_DB }}
+          key: perf-baseline-cpu-${{ github.base_ref || 'master' }}
+          restore-keys: |
+            perf-baseline-cpu-
+
+      - name: Run baseline benchmark (if no baseline exists)
+        if: steps.restore-baseline.outputs.cache-hit != 'true'
+        run: |
+          git checkout ${{ github.event.pull_request.base.sha || github.event.before || 'master' }} || true
+          cmake --build build --target llama-bench -j $(nproc) || true
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.BASELINE_DB }} || true
+          git checkout -
+
+      - name: Run current benchmark
+        run: |
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.RESULTS_DB }}
+
+      - name: Detect performance regressions
+        id: detect-regression
+        run: |
+          python scripts/performance-regression-detector.py \
+            --baseline ${{ env.BASELINE_DB }} \
+            --current ${{ env.RESULTS_DB }} \
+            --threshold ${{ env.REGRESSION_THRESHOLD }} \
+            --output regression-report.md
+
+          # Set output for subsequent steps
+          if [ -f regression-detected.flag ]; then
+            echo "regression=true" >> $GITHUB_OUTPUT
+          else
+            echo "regression=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-cpu
+          path: |
+            regression-report.md
+            ${{ env.RESULTS_DB }}
+            ${{ env.BASELINE_DB }}
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request' && always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = 'Performance Regression Test Results (CPU)\n\n';
+
+            if (fs.existsSync('regression-report.md')) {
+              report += fs.readFileSync('regression-report.md', 'utf8');
+            } else {
+              report += 'No regression report generated.';
+            }
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              });
+            } catch (error) {
+              console.log('Could not post comment (likely permissions issue):', error.message);
+            }
+
+      - name: Fail if regression detected
+        if: steps.detect-regression.outputs.regression == 'true'
+        run: |
+          echo "⚠️ Performance regression detected! Check the report for details."
+          exit 1
+
+      - name: Save baseline database
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.RESULTS_DB }}
+          key: perf-baseline-cpu-master-${{ github.sha }}
+
+  performance-cuda:
+    runs-on: gpu-runner
+    if: false  # Disabled by default - enable when GPU runners are available
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install GitPython tabulate matplotlib
+
+      - name: ccache
+        uses: ggml-org/ccache-action@v1.2.16
+        with:
+          key: performance-cuda
+          evict-old-files: 1d
+
+      - name: Build llama-bench with CUDA
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_CUDA=ON \
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
+          cmake --build build --target llama-bench llama-cli -j $(nproc)
+
+      - name: Download test model
+        run: |
+          mkdir -p models
+          if [ ! -f models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf ]; then
+            wget -q --show-progress -O models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+              https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+          fi
+
+      - name: Restore baseline database
+        id: restore-baseline-cuda
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BASELINE_DB }}
+          key: perf-baseline-cuda-${{ github.base_ref || 'master' }}
+          restore-keys: |
+            perf-baseline-cuda-
+
+      - name: Run baseline benchmark (if no baseline exists)
+        if: steps.restore-baseline-cuda.outputs.cache-hit != 'true'
+        run: |
+          git checkout ${{ github.event.pull_request.base.sha || github.event.before || 'master' }} || true
+          cmake --build build --target llama-bench -j $(nproc) || true
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -ngl 99 -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.BASELINE_DB }} || true
+          git checkout -
+
+      - name: Run current benchmark
+        run: |
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -ngl 99 -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.RESULTS_DB }}
+
+      - name: Detect performance regressions
+        id: detect-regression-cuda
+        run: |
+          python scripts/performance-regression-detector.py \
+            --baseline ${{ env.BASELINE_DB }} \
+            --current ${{ env.RESULTS_DB }} \
+            --threshold ${{ env.REGRESSION_THRESHOLD }} \
+            --output regression-report-cuda.md
+
+          if [ -f regression-detected.flag ]; then
+            echo "regression=true" >> $GITHUB_OUTPUT
+          else
+            echo "regression=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-cuda
+          path: |
+            regression-report-cuda.md
+            ${{ env.RESULTS_DB }}
+            ${{ env.BASELINE_DB }}
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request' && always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = 'Performance Regression Test Results (CUDA)\n\n';
+
+            if (fs.existsSync('regression-report-cuda.md')) {
+              report += fs.readFileSync('regression-report-cuda.md', 'utf8');
+            } else {
+              report += 'No regression report generated.';
+            }
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              });
+            } catch (error) {
+              console.log('Could not post comment (likely permissions issue):', error.message);
+            }
+
+      - name: Fail if regression detected
+        if: steps.detect-regression-cuda.outputs.regression == 'true'
+        run: |
+          echo "⚠️ Performance regression detected! Check the report for details."
+          exit 1
+
+      - name: Save baseline database
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.RESULTS_DB }}
+          key: perf-baseline-cuda-master-${{ github.sha }}
+
+  performance-metal:
+    runs-on: macos-14  # macOS with Apple Silicon for Metal testing
+
+    steps:
+      - name: Clone
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install Python dependencies
+        run: |
+          pip install GitPython tabulate matplotlib
+
+      - name: ccache
+        uses: ggml-org/ccache-action@v1.2.16
+        with:
+          key: performance-metal
+          evict-old-files: 1d
+
+      - name: Build llama-bench with Metal
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DGGML_METAL=ON \
+            -DLLAMA_FATAL_WARNINGS=ON \
+            -DLLAMA_CURL=OFF
+          cmake --build build --target llama-bench llama-cli -j $(sysctl -n hw.logicalcpu)
+
+      - name: Download test model
+        run: |
+          mkdir -p models
+          if [ ! -f models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf ]; then
+            wget -q --show-progress -O models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+              https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+          fi
+
+      - name: Restore baseline database
+        id: restore-baseline-metal
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ env.BASELINE_DB }}
+          key: perf-baseline-metal-${{ github.base_ref || 'master' }}
+          restore-keys: |
+            perf-baseline-metal-
+
+      - name: Run baseline benchmark (if no baseline exists)
+        if: steps.restore-baseline-metal.outputs.cache-hit != 'true'
+        run: |
+          git checkout ${{ github.event.pull_request.base.sha || github.event.before || 'master' }} || true
+          cmake --build build --target llama-bench -j $(sysctl -n hw.logicalcpu) || true
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -ngl 99 -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.BASELINE_DB }} || true
+          git checkout -
+
+      - name: Run current benchmark
+        run: |
+          ./build/bin/llama-bench \
+            -m models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf \
+            -ngl 99 -p 512 -n 128 -r 3 \
+            -o sql | sqlite3 ${{ env.RESULTS_DB }}
+
+      - name: Detect performance regressions
+        id: detect-regression-metal
+        run: |
+          python scripts/performance-regression-detector.py \
+            --baseline ${{ env.BASELINE_DB }} \
+            --current ${{ env.RESULTS_DB }} \
+            --threshold ${{ env.REGRESSION_THRESHOLD }} \
+            --output regression-report-metal.md
+
+          if [ -f regression-detected.flag ]; then
+            echo "regression=true" >> $GITHUB_OUTPUT
+          else
+            echo "regression=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload regression report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-report-metal
+          path: |
+            regression-report-metal.md
+            ${{ env.RESULTS_DB }}
+            ${{ env.BASELINE_DB }}
+
+      - name: Comment on PR with results
+        if: github.event_name == 'pull_request' && always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = 'Performance Regression Test Results (Metal)\n\n';
+
+            if (fs.existsSync('regression-report-metal.md')) {
+              report += fs.readFileSync('regression-report-metal.md', 'utf8');
+            } else {
+              report += 'No regression report generated.';
+            }
+
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: report
+              });
+            } catch (error) {
+              console.log('Could not post comment (likely permissions issue):', error.message);
+            }
+
+      - name: Fail if regression detected
+        if: steps.detect-regression-metal.outputs.regression == 'true'
+        run: |
+          echo "⚠️ Performance regression detected! Check the report for details."
+          exit 1
+
+      - name: Save baseline database
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ env.RESULTS_DB }}
+          key: perf-baseline-metal-master-${{ github.sha }}
