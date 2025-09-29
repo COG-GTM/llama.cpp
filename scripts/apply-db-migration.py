@@ -37,7 +37,7 @@ def apply_migration(db_path: str, migration_sql_path: str, dry_run: bool = False
 
     if dry_run:
         logger.info("Dry run mode - migration would execute:")
-        print(migration_sql)
+        logger.info(migration_sql)
         return True
 
     try:
@@ -150,12 +150,12 @@ def main():
 
     if args.check:
         status = check_migration_status(args.database)
-        print(f"Database exists: {status.get('exists', False)}")
-        print(f"Migration applied: {status.get('migrated', False)}")
+        logger.info(f"Database exists: {status.get('exists', False)}")
+        logger.info(f"Migration applied: {status.get('migrated', False)}")
         if status.get('tables'):
-            print(f"Tables present: {', '.join(status['tables'])}")
+            logger.info(f"Tables present: {', '.join(status['tables'])}")
         if status.get('migration_tables_present'):
-            print(f"Migration tables: {', '.join(status['migration_tables_present'])}")
+            logger.info(f"Migration tables: {', '.join(status['migration_tables_present'])}")
         sys.exit(0 if status.get('migrated', False) else 1)
 
     success = apply_migration(args.database, str(args.migration), args.dry_run)

@@ -238,7 +238,7 @@ class RegressionDetector:
                 self.stable.append(result)
 
         status = "regression" if self.regressions else "pass"
-        
+
         return {
             "status": status,
             "threshold": self.threshold,
@@ -307,7 +307,7 @@ class RegressionDetector:
     def _write_benchmark_section(self, f, result: Dict[str, Any], section_type: str):
         """Write a benchmark comparison section to the report."""
         f.write(f"### {result['benchmark_key']}\n\n")
-        
+
         for metric_name, change in result["changes"].items():
             if not change.get("is_regression") and section_type == "Regression":
                 continue

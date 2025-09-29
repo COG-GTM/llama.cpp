@@ -64,7 +64,6 @@ class MemoryLeakMonitor:
         with open(output_file, 'r') as f:
             content = f.read()
 
-
         size_pattern = r'model size:\s+(\d+\.?\d*)\s+(GiB|MiB|GB|MB)'
         usage_pattern = r'memory usage:\s+(\d+)\s+(MB|KB|GB)'
         peak_pattern = r'peak memory:\s+(\d+\.?\d*)\s+(GB|MB)'
@@ -276,7 +275,7 @@ class MemoryLeakMonitor:
             conn.commit()
             conn.close()
             logger.info(f"Stored {len(self.leaks_detected)} leak records and "
-                       f"{len(self.memory_issues)} excessive usage records")
+                        f"{len(self.memory_issues)} excessive usage records")
 
         except sqlite3.Error as e:
             logger.error(f"Error storing results: {e}")
