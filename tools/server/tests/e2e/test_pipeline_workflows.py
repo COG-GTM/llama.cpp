@@ -181,10 +181,8 @@ def test_streaming_pipeline(pipeline_process, e2e_small_model_config):
 
     content = ""
     for chunk in chunks:
-        if chunk.get("choices"):
-            choice = chunk["choices"][0]
-            if "content" in choice:
-                content += choice["content"]
+        if "content" in chunk:
+            content += chunk["content"]
 
     assert len(content) > 0, "Should have generated content"
 
