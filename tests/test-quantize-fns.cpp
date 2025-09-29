@@ -103,45 +103,45 @@ static float cross_format_conversion_error(ggml_type type_src, ggml_type type_ds
     const auto * qfns_src_cpu = ggml_get_type_traits_cpu(type_src);
     const auto * qfns_dst = ggml_get_type_traits(type_dst);
     const auto * qfns_dst_cpu = ggml_get_type_traits_cpu(type_dst);
-    
+
     if (!qfns_src_cpu->from_float || !qfns_src->to_float ||
         !qfns_dst_cpu->from_float || !qfns_dst->to_float) {
         return 0.0f;
     }
-    
+
     std::vector<uint8_t> tmp_q_src(2*test_size);
     std::vector<float> tmp_intermediate(test_size);
     std::vector<uint8_t> tmp_q_dst(2*test_size);
     std::vector<float> tmp_final(test_size);
-    
+
     qfns_src_cpu->from_float(test_data, tmp_q_src.data(), test_size);
     qfns_src->to_float(tmp_q_src.data(), tmp_intermediate.data(), test_size);
-    
+
     qfns_dst_cpu->from_float(tmp_intermediate.data(), tmp_q_dst.data(), test_size);
     qfns_dst->to_float(tmp_q_dst.data(), tmp_final.data(), test_size);
-    
+
     return array_rmse(test_data, tmp_final.data(), test_size);
 }
 
 static float round_trip_error(ggml_type type, size_t test_size, const float * test_data) {
     const auto * qfns = ggml_get_type_traits(type);
     const auto * qfns_cpu = ggml_get_type_traits_cpu(type);
-    
+
     if (!qfns_cpu->from_float || !qfns->to_float) {
         return 0.0f;
     }
-    
+
     std::vector<uint8_t> tmp_q1(2*test_size);
     std::vector<float> tmp_intermediate(test_size);
     std::vector<uint8_t> tmp_q2(2*test_size);
     std::vector<float> tmp_final(test_size);
-    
+
     qfns_cpu->from_float(test_data, tmp_q1.data(), test_size);
     qfns->to_float(tmp_q1.data(), tmp_intermediate.data(), test_size);
-    
+
     qfns_cpu->from_float(tmp_intermediate.data(), tmp_q2.data(), test_size);
     qfns->to_float(tmp_q2.data(), tmp_final.data(), test_size);
-    
+
     return array_rmse(tmp_intermediate.data(), tmp_final.data(), test_size);
 }
 
@@ -238,10 +238,10 @@ int main(int argc, char * argv[]) {
             if (i != j) {
                 ggml_type type_src = cross_format_test_types[i];
                 ggml_type type_dst = cross_format_test_types[j];
-                
+
                 ggml_quantize_init(type_src);
                 ggml_quantize_init(type_dst);
-                
+
                 float error = cross_format_conversion_error(type_src, type_dst, test_size, test_data.data());
                 if (error > 0.0f) {
                     failed = !(error < MAX_CROSS_FORMAT_ERROR);
@@ -260,7 +260,7 @@ int main(int argc, char * argv[]) {
     for (size_t i = 0; i < sizeof(cross_format_test_types)/sizeof(cross_format_test_types[0]); i++) {
         ggml_type type = cross_format_test_types[i];
         ggml_quantize_init(type);
-        
+
         float error = round_trip_error(type, test_size, test_data.data());
         if (error > 0.0f) {
             failed = !(error < MAX_ROUND_TRIP_ERROR);

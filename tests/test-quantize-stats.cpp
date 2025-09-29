@@ -167,27 +167,27 @@ static void test_roundtrip_on_chunk(
 // Run quantization function for a single layer and update error stats
 static double calculate_perplexity(const float * logits, const int * targets, int n_tokens, int vocab_size) {
     double neg_log_likelihood = 0.0;
-    
+
     for (int i = 0; i < n_tokens; i++) {
         int target = targets[i];
         if (target < 0 || target >= vocab_size) continue;
-        
+
         const float * token_logits = logits + i * vocab_size;
-        
+
         float max_logit = token_logits[0];
         for (int j = 1; j < vocab_size; j++) {
             if (token_logits[j] > max_logit) max_logit = token_logits[j];
         }
-        
+
         double sum_exp = 0.0;
         for (int j = 0; j < vocab_size; j++) {
             sum_exp += exp(token_logits[j] - max_logit);
         }
-        
+
         double log_prob = (token_logits[target] - max_logit) - log(sum_exp);
         neg_log_likelihood += -log_prob;
     }
-    
+
     return exp(neg_log_likelihood / n_tokens);
 }
 
@@ -199,17 +199,17 @@ static void compare_perplexity_across_formats(
 ) {
     printf("\n=== Perplexity Comparison Across Quantization Formats ===\n");
     printf("Note: Lower perplexity indicates better model quality\n\n");
-    
+
     const int n_vocab = llama_n_vocab(model);
     std::vector<int> targets(test_tokens.begin() + 1, test_tokens.end());
-    
+
     for (ggml_type qtype : quant_types) {
         const auto * qfns = ggml_get_type_traits(qtype);
         if (!qfns->from_float || !qfns->to_float) continue;
-        
+
         printf("%-12s: perplexity calculation requires model inference\n", ggml_type_name(qtype));
     }
-    
+
     printf("\nNote: Full perplexity measurement requires model inference.\n");
     printf("      This is a placeholder for the perplexity framework.\n");
     printf("      Actual implementation would:\n");
