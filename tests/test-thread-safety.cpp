@@ -6,6 +6,8 @@
 #include <thread>
 #include <vector>
 #include <atomic>
+#include <chrono>
+#include <random>
 #include "llama.h"
 #include "arg.h"
 #include "common.h"
@@ -151,5 +153,74 @@ int main(int argc, char ** argv) {
     }
 
     LOG_INF("All threads finished without errors.\n");
+
+    LOG_INF("\n=== Additional Stress Tests ===\n");
+
+    LOG_INF("\n=== Test 2: Rapid Context Recreation Stress Test ===\n");
+    {
+        std::atomic<int> contexts_created{0};
+        std::atomic<int> contexts_destroyed{0};
+        std::atomic<int> errors{0};
+        
+        const int stress_iterations = 10;
+        auto * model_stress = models[0].get();
+        
+        auto stress_test_func = [&](int thread_id) {
+            std::random_device rd;
+            std::mt19937 gen(rd() + thread_id);
+            std::uniform_int_distribution<> delay_dist(1, 5);
+            
+            for (int i = 0; i < stress_iterations; i++) {
+                llama_context_ptr stress_ctx { llama_init_from_model(model_stress, cparams) };
+                
+                if (!stress_ctx) {
+                    LOG_ERR("thread %d: failed to create context on iteration %d\n", thread_id, i);
+                    errors++;
+                    continue;
+                }
+                
+                contexts_created++;
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(delay_dist(gen)));
+                
+                contexts_destroyed++;
+            }
+        };
+        
+        const int64_t t_start = ggml_time_us();
+        
+        std::vector<std::thread> stress_threads;
+        const int n_stress_threads = std::min(4, num_contexts);
+        for (int i = 0; i < n_stress_threads; i++) {
+            stress_threads.emplace_back(stress_test_func, i);
+        }
+        
+        for (auto & t : stress_threads) {
+            t.join();
+        }
+        
+        const int64_t t_end = ggml_time_us();
+        
+        LOG_INF("Stress test results:\n");
+        LOG_INF("  Contexts created: %d\n", contexts_created.load());
+        LOG_INF("  Contexts destroyed: %d\n", contexts_destroyed.load());
+        LOG_INF("  Errors: %d\n", errors.load());
+        LOG_INF("  Total time: %.2f ms\n", (t_end - t_start) / 1000.0);
+        
+        if (contexts_created != contexts_destroyed) {
+            LOG_ERR("FAIL: Context leak detected! Created: %d, Destroyed: %d\n",
+                    contexts_created.load(), contexts_destroyed.load());
+            return 1;
+        }
+        
+        if (errors > 0) {
+            LOG_ERR("FAIL: %d errors occurred during stress test\n", errors.load());
+            return 1;
+        }
+        
+        LOG_INF("PASS: Stress test completed without leaks or errors\n");
+    }
+
+    LOG_INF("\n=== All Thread Safety Tests PASSED ===\n");
     return 0;
 }

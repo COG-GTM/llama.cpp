@@ -187,6 +187,18 @@ llama_build_and_test(test-regex-partial.cpp)
 
 llama_build_and_test(test-thread-safety.cpp ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf -ngl 99 -p "The meaning of life is" -n 128 -c 256 -ub 32 -np 4 -t 2)
 
+llama_build_and_test(test-concurrent-stress.cpp
+    NAME test-concurrent-stress
+    ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf
+         -ngl 99 -p "Test prompt" -n 64 -c 256 -np 4 -t 4
+    LABEL concurrent)
+
+llama_build_and_test(test-kv-cache-concurrent.cpp
+    NAME test-kv-cache-concurrent
+    ARGS -hf ggml-org/models -hff tinyllamas/stories15M-q4_0.gguf
+         -ngl 99 -p "Test prompt" -n 64 -c 256 -np 8 -t 4
+    LABEL concurrent)
+
 # this fails on windows (github hosted runner) due to curl DLL not found (exit code 0xc0000135)
 if (NOT WIN32)
     llama_build_and_test(test-arg-parser.cpp)
