@@ -5433,7 +5433,6 @@ struct test_falcon : public test_llm {
     }
 };
 
-
 // ###########################################
 // ## Section 3: GGML Op Test Instantiation ##
 // ###########################################
