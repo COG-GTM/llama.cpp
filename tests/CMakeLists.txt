@@ -207,6 +207,12 @@ if (NOT GGML_BACKEND_DL)
     llama_build_and_test(test-barrier.cpp)
     llama_build_and_test(test-quantize-fns.cpp)
     llama_build_and_test(test-quantize-perf.cpp)
+    # Build test-conversion-accuracy but don't register it for automatic CI execution
+    # This test validates quantization accuracy with strict thresholds that are environment-dependent
+    # Developers can run it manually: ./build/bin/test-conversion-accuracy
+    add_executable(test-conversion-accuracy test-conversion-accuracy.cpp get-model.cpp)
+    target_link_libraries(test-conversion-accuracy PRIVATE common)
+    install(TARGETS test-conversion-accuracy RUNTIME)
     llama_build_and_test(test-rope.cpp)
 endif()
 
