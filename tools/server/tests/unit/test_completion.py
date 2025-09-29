@@ -577,7 +577,7 @@ def test_completion_high_volume_concurrent(n_slots: int, n_requests: int):
             "temperature": 0.8,
             "n_predict": 32,
         })))
-    
+
     tasks.append((check_slots_status, ()))
     results = parallel_function_calls(tasks)
 
@@ -586,7 +586,7 @@ def test_completion_high_volume_concurrent(n_slots: int, n_requests: int):
         res = results[i]
         if res.status_code == 200 and "content" in res.body:
             success_count += 1
-    
+
     assert success_count >= n_requests * 0.9
 
 
@@ -611,7 +611,7 @@ def test_completion_parallel_decoding():
             "n_predict": 64,
             "temperature": 0.5,
         })))
-    
+
     results = parallel_function_calls(tasks)
 
     for i, res in enumerate(results):
@@ -643,7 +643,7 @@ def test_completion_cache_consistency_concurrent():
             "temperature": 0.0,
             "cache_prompt": True,
         })))
-    
+
     results = parallel_function_calls(tasks)
 
     cache_hit_count = 0
@@ -652,5 +652,5 @@ def test_completion_cache_consistency_concurrent():
         assert "content" in res.body
         if "tokens_cached" in res.body and res.body["tokens_cached"] > 0:
             cache_hit_count += 1
-    
+
     assert cache_hit_count >= 0
