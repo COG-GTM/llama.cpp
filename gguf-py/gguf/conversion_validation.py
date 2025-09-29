@@ -18,7 +18,7 @@ def calculate_rmse(original: np.ndarray, converted: np.ndarray) -> float:
     """Calculate Root Mean Square Error between original and converted tensors."""
     if original.shape != converted.shape:
         raise ValueError(f"Shape mismatch: {original.shape} vs {converted.shape}")
-    
+
     diff = original.astype(np.float64) - converted.astype(np.float64)
     mse = np.mean(diff ** 2)
     return np.sqrt(mse)
@@ -28,7 +28,7 @@ def calculate_max_error(original: np.ndarray, converted: np.ndarray) -> float:
     """Calculate maximum absolute error between original and converted tensors."""
     if original.shape != converted.shape:
         raise ValueError(f"Shape mismatch: {original.shape} vs {converted.shape}")
-    
+
     diff = np.abs(original.astype(np.float64) - converted.astype(np.float64))
     return np.max(diff)
 
@@ -43,7 +43,7 @@ def validate_tensor_conversion(
 ) -> tuple[bool, dict[str, float]]:
     """
     Validate accuracy of a single tensor conversion.
-    
+
     Args:
         tensor_name: Name of the tensor being validated
         original_data: Original tensor data
@@ -51,16 +51,16 @@ def validate_tensor_conversion(
         max_rmse_threshold: Maximum allowed RMSE
         max_error_threshold: Maximum allowed absolute error
         verbose: Whether to print detailed validation results
-    
+
     Returns:
         Tuple of (passed: bool, metrics: dict)
     """
     try:
         rmse = calculate_rmse(original_data, converted_data)
         max_err = calculate_max_error(original_data, converted_data)
-        
+
         passed = rmse <= max_rmse_threshold and max_err <= max_error_threshold
-        
+
         metrics = {
             "rmse": float(rmse),
             "max_error": float(max_err),
@@ -68,16 +68,16 @@ def validate_tensor_conversion(
             "max_error_threshold": max_error_threshold,
             "passed": passed
         }
-        
+
         if verbose or not passed:
             status = "✓" if passed else "✗"
             logger.info(
                 f"{status} {tensor_name}: RMSE={rmse:.6f} (threshold={max_rmse_threshold}), "
                 f"MaxErr={max_err:.6f} (threshold={max_error_threshold})"
             )
-        
+
         return passed, metrics
-    
+
     except Exception as e:
         logger.error(f"Error validating {tensor_name}: {e}")
         return False, {"error": str(e)}
@@ -91,18 +91,18 @@ def validate_model_conversion(
 ) -> dict[str, Any]:
     """
     Validate accuracy of entire model conversion.
-    
+
     Args:
         original_tensors: Dictionary of original tensor names to data
         converted_tensors: Dictionary of converted tensor names to data
         quantization_type: Type of quantization used (affects thresholds)
         verbose: Whether to print detailed validation results
-    
+
     Returns:
         Dictionary with validation results and statistics
     """
     thresholds = get_quantization_thresholds(quantization_type)
-    
+
     results = {
         "total_tensors": 0,
         "passed_tensors": 0,
@@ -110,16 +110,16 @@ def validate_model_conversion(
         "metrics": {},
         "overall_passed": True
     }
-    
+
     common_tensors = set(original_tensors.keys()) & set(converted_tensors.keys())
-    
+
     if not common_tensors:
         logger.warning("No common tensors found between original and converted models")
         results["overall_passed"] = False
         return results
-    
+
     results["total_tensors"] = len(common_tensors)
-    
+
     for tensor_name in sorted(common_tensors):
         passed, metrics = validate_tensor_conversion(
             tensor_name,
@@ -129,32 +129,32 @@ def validate_model_conversion(
             max_error_threshold=thresholds["max_error"],
             verbose=verbose
         )
-        
+
         results["metrics"][tensor_name] = metrics
-        
+
         if passed:
             results["passed_tensors"] += 1
         else:
             results["failed_tensors"].append(tensor_name)
             results["overall_passed"] = False
-    
+
     if verbose:
         logger.info(
             f"\nValidation Summary: {results['passed_tensors']}/{results['total_tensors']} tensors passed"
         )
         if results["failed_tensors"]:
             logger.warning(f"Failed tensors: {', '.join(results['failed_tensors'])}")
-    
+
     return results
 
 
 def get_quantization_thresholds(quantization_type: str) -> dict[str, float]:
     """
     Get appropriate error thresholds for different quantization types.
-    
+
     Args:
         quantization_type: Type of quantization (f32, f16, q4_0, q8_0, etc.)
-    
+
     Returns:
         Dictionary with "rmse" and "max_error" thresholds
     """
@@ -173,25 +173,25 @@ def get_quantization_thresholds(quantization_type: str) -> dict[str, float]:
         "q5_k": {"rmse": 8e-3, "max_error": 8e-2},
         "q6_k": {"rmse": 5e-3, "max_error": 5e-2},
     }
-    
+
     default = {"rmse": 1e-2, "max_error": 1e-1}
-    
+
     return thresholds_map.get(quantization_type.lower(), default)
 
 
 def save_validation_report(results: dict[str, Any], output_path: Path) -> None:
     """
     Save validation results to a JSON file.
-    
+
     Args:
         results: Validation results dictionary
         output_path: Path to save the report
     """
     import json
-    
+
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
-    
+
     logger.info(f"Validation report saved to {output_path}")
 
 

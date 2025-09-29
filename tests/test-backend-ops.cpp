@@ -5916,7 +5916,7 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
         GGML_TYPE_Q4_0, GGML_TYPE_Q4_1, GGML_TYPE_Q5_0, GGML_TYPE_Q5_1,
         GGML_TYPE_Q8_0, GGML_TYPE_Q4_K, GGML_TYPE_Q5_K, GGML_TYPE_Q6_K
     };
-    
+
     for (ggml_type intermediate : quant_conversion_test_types) {
         for (ggml_type dst : quant_conversion_test_types) {
             if (intermediate != dst) {
