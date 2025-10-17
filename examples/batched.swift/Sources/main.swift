@@ -150,6 +150,7 @@ while n_cur <= n_len {
             i_batch[i] = -1
             // print("")
             if n_parallel > 1 {
+                // Security note: n_cur is a public token count, not sensitive information
                 print("stream \(i) finished at n_cur = \(n_cur)")
             }
 

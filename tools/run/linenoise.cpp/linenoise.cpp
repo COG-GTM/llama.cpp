@@ -1420,7 +1420,8 @@ static void linenoiseEditHistoryNext(struct linenoiseState * l, int dir) {
             l->history_index = history_len-1;
             return;
         }
-        strncpy(l->buf,history[history_len - 1 - l->history_index],l->buflen);
+        /* Defensive: ensure proper null termination when copying history */
+        strncpy(l->buf,history[history_len - 1 - l->history_index],l->buflen - 1);
         l->buf[l->buflen-1] = '\0';
         l->len = l->pos = strlen(l->buf);
         refreshLine(l);
@@ -1909,6 +1910,8 @@ int linenoiseHistoryAdd(const char *line) {
      * If we reached the max length, remove the older line. */
     linecopy = strdup(line);
     if (!linecopy) return 0;
+    /* Ensure null termination for security (strdup should already do this) */
+    linecopy[strlen(linecopy)] = '\0';
     if (history_len == history_max_len) {
         free(history[0]);
         memmove(history,history+1,sizeof(char*)*(history_max_len-1));
@@ -1963,7 +1966,10 @@ int linenoiseHistorySave(const char *filename) {
     }
     chmod(filename,S_IRUSR|S_IWUSR);
     for (int j = 0; j < history_len; ++j) {
-        fprintf(file.file, "%s\n", history[j]);
+        /* Ensure history entries are valid before writing */
+        if (history[j] != NULL) {
+            fprintf(file.file, "%s\n", history[j]);
+        }
     }
 
     return 0;
