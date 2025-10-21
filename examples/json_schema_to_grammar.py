@@ -793,6 +793,17 @@ def main(args_in = None):
     if args.schema.startswith('https://'):
         url = args.schema
         import requests
+        import urllib.parse
+        
+        parsed = urllib.parse.urlparse(url)
+        if parsed.hostname in ['localhost', '127.0.0.1', '0.0.0.0']:
+            raise ValueError(f"Invalid URL: localhost not allowed")
+        if (parsed.hostname and (parsed.hostname.startswith('10.') or 
+            parsed.hostname.startswith('192.168.') or
+            parsed.hostname.startswith('169.254.') or
+            any(parsed.hostname.startswith(f'172.{i}.') for i in range(16, 32)))):
+            raise ValueError(f"Invalid URL: private IP ranges not allowed")
+        
         schema = requests.get(url).json()
     elif args.schema == '-':
         url = 'stdin'
