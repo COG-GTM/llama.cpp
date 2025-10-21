@@ -295,12 +295,19 @@ namespace console {
             return expectedWidth;
         }
 
+        if (x2 < 0 || x1 < 0 || x2 > 10000 || x1 > 10000) {
+            return expectedWidth;
+        }
+
         int width = x2 - x1;
         if (width < 0) {
-            // Calculate the width considering text wrapping
             struct winsize w;
             ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
-            width += w.ws_col;
+            if (w.ws_col > 0 && w.ws_col < 10000) {
+                width += w.ws_col;
+            } else {
+                return expectedWidth;
+            }
         }
         return width;
 #endif
@@ -409,11 +416,14 @@ namespace console {
             } else {
                 int offset = line.length();
                 append_utf8(input_char, line);
-                int width = put_codepoint(line.c_str() + offset, line.length() - offset, estimateWidth(input_char));
-                if (width < 0) {
-                    width = 0;
+                size_t current_len = line.length();
+                if (current_len >= (size_t)offset && current_len < 100000) {
+                    int width = put_codepoint(line.c_str() + offset, current_len - offset, estimateWidth(input_char));
+                    if (width < 0) {
+                        width = 0;
+                    }
+                    widths.push_back(width);
                 }
-                widths.push_back(width);
             }
 
             if (!line.empty() && (line.back() == '\\' || line.back() == '/')) {

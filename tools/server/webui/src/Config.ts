@@ -43,7 +43,7 @@ export const CONFIG_DEFAULT = {
   pyIntepreterEnabled: false,
 };
 export const CONFIG_INFO: Record<string, string> = {
-  apiKey: 'Set the API Key if you are using --api-key option for the server.',
+  apiKey: 'Configure the API authentication token when using --api-key server option.',
   systemMessage: 'The starting message that defines how model should behave.',
   pasteLongTextToFileLen:
     'On pasting long text, it will be converted to a file. You can control the file length by setting the value of this parameter. Value 0 means disable.',
