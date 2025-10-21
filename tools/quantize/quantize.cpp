@@ -535,7 +535,8 @@ int main(int argc, char ** argv) {
         params.imatrix = &imatrix_data;
         {
             llama_model_kv_override kvo;
-            std::strcpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_FILE);
+            strncpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_FILE, 127);
+            kvo.key[127] = '\0';
             kvo.tag = LLAMA_KV_OVERRIDE_TYPE_STR;
             strncpy(kvo.val_str, imatrix_file.c_str(), 127);
             kvo.val_str[127] = '\0';
@@ -544,7 +545,8 @@ int main(int argc, char ** argv) {
         if (!imatrix_datasets.empty()) {
             llama_model_kv_override kvo;
             // TODO: list multiple datasets when there are more than one
-            std::strcpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_DATASET);
+            strncpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_DATASET, 127);
+            kvo.key[127] = '\0';
             kvo.tag = LLAMA_KV_OVERRIDE_TYPE_STR;
             strncpy(kvo.val_str, imatrix_datasets[0].c_str(), 127);
             kvo.val_str[127] = '\0';
@@ -553,7 +555,8 @@ int main(int argc, char ** argv) {
 
         {
             llama_model_kv_override kvo;
-            std::strcpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_N_ENTRIES);
+            strncpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_N_ENTRIES, 127);
+            kvo.key[127] = '\0';
             kvo.tag = LLAMA_KV_OVERRIDE_TYPE_INT;
             kvo.val_i64 = imatrix_data.size();
             kv_overrides.emplace_back(std::move(kvo));
@@ -561,7 +564,8 @@ int main(int argc, char ** argv) {
 
         if (m_last_call > 0) {
             llama_model_kv_override kvo;
-            std::strcpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_N_CHUNKS);
+            strncpy(kvo.key, LLM_KV_QUANTIZE_IMATRIX_N_CHUNKS, 127);
+            kvo.key[127] = '\0';
             kvo.tag = LLAMA_KV_OVERRIDE_TYPE_INT;
             kvo.val_i64 = m_last_call;
             kv_overrides.emplace_back(std::move(kvo));
