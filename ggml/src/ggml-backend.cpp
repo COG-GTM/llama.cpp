@@ -1194,6 +1194,11 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
                 i_split++;
                 if (i_split >= sched->splits_capacity) {
                     sched->splits_capacity *= 2;
+                    
+                    if (sched->splits_capacity > SIZE_MAX / sizeof(struct ggml_backend_sched_split)) {
+                        GGML_LOG_ERROR("%s: integer overflow in splits reallocation\n", __func__);
+                        return;
+                    }
                     sched->splits = (ggml_backend_sched_split *)
                         realloc(sched->splits, sched->splits_capacity * sizeof(struct ggml_backend_sched_split));
                     GGML_ASSERT(sched->splits != NULL);
@@ -1284,6 +1289,11 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
     int graph_size = std::max(graph->n_nodes, graph->n_leafs) + sched->n_splits*GGML_SCHED_MAX_SPLIT_INPUTS*2*sched->n_copies;
     if (sched->graph.size < graph_size) {
         sched->graph.size = graph_size;
+        
+        if (graph_size > 0 && (size_t)graph_size > SIZE_MAX / sizeof(struct ggml_tensor *)) {
+            GGML_LOG_ERROR("%s: integer overflow in graph nodes/leafs reallocation\n", __func__);
+            return;
+        }
         sched->graph.nodes = (ggml_tensor **) realloc(sched->graph.nodes, graph_size * sizeof(struct ggml_tensor *));
         sched->graph.leafs = (ggml_tensor **) realloc(sched->graph.leafs, graph_size * sizeof(struct ggml_tensor *));
         GGML_ASSERT(sched->graph.nodes != NULL);
