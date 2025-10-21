@@ -6,6 +6,7 @@ import itertools
 import json
 import re
 import sys
+import os
 from typing import Any, List, Optional, Set, Tuple, Union
 
 def _build_repetition(item_rule, min_items, max_items, separator_rule=None):
@@ -798,6 +799,10 @@ def main(args_in = None):
         schema = json.load(sys.stdin)
     else:
         url = f'file://{args.schema}'
+        if not os.path.isfile(args.schema) or not args.schema.endswith((".json", ".JSON")):
+
+            raise ValueError(f"Invalid schema file: {args.schema}")
+
         with open(args.schema) as f:
             schema = json.load(f)
     converter = SchemaConverter(

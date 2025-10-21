@@ -14,6 +14,7 @@
 import json
 import re
 import sys
+import os
 
 
 def get_chat_template(model_id, variant=None):
@@ -21,7 +22,13 @@ def get_chat_template(model_id, variant=None):
         # Use huggingface_hub library if available.
         # Allows access to gated models if the user has access and ran `huggingface-cli login`.
         from huggingface_hub import hf_hub_download
-        with open(hf_hub_download(repo_id=model_id, filename="tokenizer_config.json"), encoding="utf-8") as f:
+        config_path = hf_hub_download(repo_id=model_id, filename="tokenizer_config.json")
+
+        if not os.path.isfile(config_path):
+
+            raise ValueError(f"Invalid config file: {config_path}")
+
+        with open(config_path, encoding="utf-8") as f:
             config_str = f.read()
     except ImportError:
         import requests
