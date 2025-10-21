@@ -167,7 +167,12 @@ static int checkpoint_init_weights(TransformerWeights * w, const Config * p, FIL
 
     // Skip freq_cis_real & freq_cis_imag
     int head_size = p->dim / p->n_heads;
-    fseek(f, p->seq_len * head_size * sizeof(float), SEEK_CUR);
+    if (head_size < 0 || head_size > 10000 || p->seq_len < 0 || p->seq_len > 100000) {
+        LOG_ERR("%s: Invalid head_size or seq_len\n", __func__);
+        return 1;
+    }
+    long skip_size = (long)p->seq_len * (long)head_size * sizeof(float);
+    fseek(f, skip_size, SEEK_CUR);
 
     if (!shared_weights && fread(w->wcls.data(), sizeof(float), w->wcls.size(), f) != w->wcls.size()) return 1;
 
