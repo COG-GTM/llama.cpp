@@ -6386,6 +6386,10 @@ void ggml_build_backward_expand(
 
     memset(cgraph->grads,     0, cgraph->visited_hash_set.size*sizeof(struct ggml_tensor *));
     memset(cgraph->grad_accs, 0, cgraph->visited_hash_set.size*sizeof(struct ggml_tensor *));
+    
+    if (cgraph->visited_hash_set.size > SIZE_MAX / sizeof(bool)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     bool * grads_needed = calloc(cgraph->visited_hash_set.size, sizeof(bool));
 
     {
