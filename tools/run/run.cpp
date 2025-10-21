@@ -438,7 +438,11 @@ class HttpClient {
             printe("Fetching resource '%s' failed: %s\n", url.c_str(), curl_easy_strerror(res));
             return 1;
         }
-        if (!output_file.empty()) {
+        if (!output_file.empty() && !output_file_partial.empty()) {
+            if (output_file.find("..") != std::string::npos || output_file_partial.find("..") != std::string::npos) {
+                printe("Invalid file path\n");
+                return 1;
+            }
             std::filesystem::rename(output_file_partial, output_file);
         }
 
@@ -654,6 +658,10 @@ class LlamaData {
 #ifdef LLAMA_USE_CURL
     int download(const std::string & url, const std::string & output_file, const bool progress,
                  const std::vector<std::string> & headers = {}, std::string * response_str = nullptr) {
+        if (!output_file.empty() && output_file.find("..") != std::string::npos) {
+            printe("Invalid output file path\n");
+            return 1;
+        }
         HttpClient http;
         if (http.init(url, headers, output_file, progress, response_str)) {
             return 1;

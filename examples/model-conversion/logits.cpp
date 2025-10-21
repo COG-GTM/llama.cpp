@@ -161,9 +161,12 @@ int main(int argc, char ** argv) {
 
     std::filesystem::create_directory("data");
 
-    // Save logits to binary file
     char bin_filename[512];
     snprintf(bin_filename, sizeof(bin_filename), "data/llamacpp-%s%s.bin", model_name, type);
+    if (strlen(bin_filename) == 0) {
+        fprintf(stderr, "%s: error: invalid binary output filename\n", __func__);
+        return 1;
+    }
     printf("Saving logits to %s\n", bin_filename);
 
     FILE * f = fopen(bin_filename, "wb");
@@ -174,9 +177,12 @@ int main(int argc, char ** argv) {
     fwrite(logits, sizeof(float), n_logits, f);
     fclose(f);
 
-    // Also save as text for debugging
     char txt_filename[512];
     snprintf(txt_filename, sizeof(txt_filename), "data/llamacpp-%s%s.txt", model_name, type);
+    if (strlen(txt_filename) == 0) {
+        fprintf(stderr, "%s: error: invalid text output filename\n", __func__);
+        return 1;
+    }
     f = fopen(txt_filename, "w");
     if (f == NULL) {
         fprintf(stderr, "%s: error: failed to open text output file\n", __func__);
