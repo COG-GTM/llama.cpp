@@ -604,6 +604,12 @@ static const struct ggml_backend_buffer_i ggml_backend_multi_buffer_i = {
 ggml_backend_buffer_t ggml_backend_multi_buffer_alloc_buffer(ggml_backend_buffer_t * buffers, size_t n_buffers) {
     ggml_backend_multi_buffer_context * ctx = (ggml_backend_multi_buffer_context *) malloc(sizeof(struct ggml_backend_multi_buffer_context));
     ctx->n_buffers = n_buffers;
+    
+    if (n_buffers > 0 && n_buffers > SIZE_MAX / sizeof(ggml_backend_buffer_t)) {
+        GGML_LOG_ERROR("%s: integer overflow in buffers allocation\n", __func__);
+        free(ctx);
+        return NULL;
+    }
     ctx->buffers = (ggml_backend_buffer_t *) malloc(n_buffers * sizeof(ggml_backend_buffer_t));
 
     GGML_ASSERT(ctx->buffers != NULL);
