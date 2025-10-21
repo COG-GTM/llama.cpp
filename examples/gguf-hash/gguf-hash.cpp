@@ -206,8 +206,8 @@ static bool manifest_type(const std::string & manifest_file, manifest_check_para
         return false;
     }
 
-    std::ifstream file(manifest_file);
-    if (!file.is_open()) {
+    std::ifstream file(manifest_file, std::ios::binary);
+    if (!file.is_open() || !file.good()) {
         return false;
     }
 
@@ -238,8 +238,8 @@ static hash_manifest_result_t manifest_verify(const std::string& manifest_file, 
         return HASH_MANIFEST_NOT_FOUND;
     }
 
-    std::ifstream file(manifest_file);
-    if (!file.is_open()) {
+    std::ifstream file(manifest_file, std::ios::binary);
+    if (!file.is_open() || !file.good()) {
         return HASH_MANIFEST_NOT_FOUND;
     }
 
