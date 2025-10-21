@@ -22,6 +22,9 @@ if os.path.exists(index_path):
     # Multi-file model
     print("Multi-file model detected")
 
+    if not os.path.isfile(index_path) or not index_path.endswith('.json'):
+        print(f"Error: Invalid index file: {index_path}")
+        exit(1)
     with open(index_path, 'r') as f:
         index_data = json.load(f)
 

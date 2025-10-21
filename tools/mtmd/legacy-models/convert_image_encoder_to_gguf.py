@@ -137,11 +137,19 @@ if (
     vocab = None
     tokens = None
 else:
-    with open(dir_model + "/vocab.json", "r", encoding="utf-8") as f:
+    vocab_path = dir_model + "/vocab.json"
+    if not os.path.isfile(vocab_path):
+        print(f"Error: vocab.json not found at {vocab_path}")
+        sys.exit(1)
+    with open(vocab_path, "r", encoding="utf-8") as f:
         vocab = json.load(f)
         tokens = [key for key in vocab]
 
-with open(dir_model + "/config.json", "r", encoding="utf-8") as f:
+config_path = dir_model + "/config.json"
+if not os.path.isfile(config_path):
+    print(f"Error: config.json not found at {config_path}")
+    sys.exit(1)
+with open(config_path, "r", encoding="utf-8") as f:
     config = json.load(f)
     if args.clip_model_is_vision:
         v_hparams = config

@@ -679,6 +679,8 @@ def must_read(fp: IO[bytes], length: int) -> bytes:
 
 @functools.lru_cache(maxsize=None)
 def lazy_load_file(path: Path) -> ModelPlus:
+    if not os.path.isfile(path):
+        raise ValueError(f"File does not exist: {path}")
     fp = open(path, 'rb')
     first8 = fp.read(8)
     fp.seek(0)

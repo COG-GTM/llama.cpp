@@ -135,6 +135,9 @@ def main() -> None:
         new_metadata[gguf.Keys.Tokenizer.CHAT_TEMPLATE] = MetadataDetails(gguf.GGUFValueType.STRING, json.loads(args.chat_template) if args.chat_template.startswith('[') else args.chat_template)
 
     if args.chat_template_config:
+        if not os.path.isfile(args.chat_template_config) or not str(args.chat_template_config).endswith('.json'):
+            logger.error(f"Invalid chat template config file: {args.chat_template_config}")
+            sys.exit(1)
         with open(args.chat_template_config, 'r', encoding='utf-8') as fp:
             config = json.load(fp)
             template = config.get('chat_template')
@@ -142,6 +145,9 @@ def main() -> None:
                 new_metadata[gguf.Keys.Tokenizer.CHAT_TEMPLATE] = MetadataDetails(gguf.GGUFValueType.STRING, template)
 
     if args.chat_template_file:
+        if not os.path.isfile(args.chat_template_file):
+            logger.error(f"Chat template file does not exist: {args.chat_template_file}")
+            sys.exit(1)
         with open(args.chat_template_file, 'r', encoding='utf-8') as fp:
             template = fp.read()
             new_metadata[gguf.Keys.Tokenizer.CHAT_TEMPLATE] = MetadataDetails(gguf.GGUFValueType.STRING, template)
