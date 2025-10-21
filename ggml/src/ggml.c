@@ -137,6 +137,9 @@ void ggml_print_backtrace(void) {
     }
 #if defined(__linux__)
     FILE * f = fopen("/proc/self/status", "r");
+    if (f == NULL) {
+        return;
+    }
     size_t size = 0;
     char * line = NULL;
     ssize_t length = 0;
