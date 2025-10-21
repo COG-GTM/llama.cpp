@@ -1317,12 +1317,12 @@ static std::pair<int, int> test_gguf_set_kv(ggml_backend_dev_t dev, const unsign
 
 static std::pair<int, int> test_version_compatibility(const unsigned int seed) {
     printf("%s: testing GGUF version compatibility\n", __func__);
-    
+
     int npass = 0;
     int ntest = 0;
-    
+
     FILE * file_v3 = get_handcrafted_file(seed, HANDCRAFTED_DATA_SUCCESS);
-    
+
 #ifdef _WIN32
     if (!file_v3) {
         printf("failed to create tmpfile(), needs elevated privileges on Windows");
@@ -1332,14 +1332,14 @@ static std::pair<int, int> test_version_compatibility(const unsigned int seed) {
 #else
     GGML_ASSERT(file_v3);
 #endif
-    
+
     struct ggml_context * ctx = nullptr;
     struct gguf_init_params params = {
         /*no_alloc =*/ false,
         /*ctx      =*/ &ctx,
     };
     struct gguf_context * gguf_ctx = gguf_init_from_file_impl(file_v3, params);
-    
+
     printf("%s: read_version_3: ", __func__);
     if (gguf_ctx && gguf_get_version(gguf_ctx) == GGUF_VERSION) {
         printf("\033[1;32mOK\033[0m\n");
@@ -1348,13 +1348,13 @@ static std::pair<int, int> test_version_compatibility(const unsigned int seed) {
         printf("\033[1;31mFAIL\033[0m\n");
     }
     ntest++;
-    
+
     fclose(file_v3);
     if (gguf_ctx) {
         ggml_free(ctx);
         gguf_free(gguf_ctx);
     }
-    
+
     printf("\n");
     return std::make_pair(npass, ntest);
 }
@@ -1363,16 +1363,16 @@ static std::pair<int, int> test_large_file_handling(ggml_backend_dev_t dev, cons
     (void)seed;
     ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
     printf("%s: device=%s, backend=%s\n", __func__, ggml_backend_dev_description(dev), ggml_backend_name(backend));
-    
+
     int npass = 0;
     int ntest = 0;
-    
+
     struct gguf_context * gguf_ctx = gguf_init_empty();
     for (int i = 0; i < 1000; ++i) {
         const std::string key = "large_test_key_" + std::to_string(i);
         gguf_set_val_u32(gguf_ctx, key.c_str(), i);
     }
-    
+
     printf("%s: large_kv_count: ", __func__);
     if (gguf_get_n_kv(gguf_ctx) == 1000) {
         printf("\033[1;32mOK\033[0m\n");
@@ -1381,7 +1381,7 @@ static std::pair<int, int> test_large_file_handling(ggml_backend_dev_t dev, cons
         printf("\033[1;31mFAIL\033[0m\n");
     }
     ntest++;
-    
+
     FILE * file = tmpfile();
 #ifdef _WIN32
     if (!file) {
@@ -1394,15 +1394,15 @@ static std::pair<int, int> test_large_file_handling(ggml_backend_dev_t dev, cons
 #else
     GGML_ASSERT(file);
 #endif
-    
+
     std::vector<int8_t> buf;
     gguf_write_to_buf(gguf_ctx, buf, false);
     GGML_ASSERT(fwrite(buf.data(), 1, buf.size(), file) == buf.size());
     rewind(file);
-    
+
     struct gguf_init_params params = {/*no_alloc =*/ false, /*ctx =*/ nullptr};
     struct gguf_context * gguf_ctx_read = gguf_init_from_file_impl(file, params);
-    
+
     printf("%s: large_kv_roundtrip: ", __func__);
     if (gguf_ctx_read && gguf_get_n_kv(gguf_ctx_read) == 1000) {
         printf("\033[1;32mOK\033[0m\n");
@@ -1411,14 +1411,14 @@ static std::pair<int, int> test_large_file_handling(ggml_backend_dev_t dev, cons
         printf("\033[1;31mFAIL\033[0m\n");
     }
     ntest++;
-    
+
     fclose(file);
     gguf_free(gguf_ctx);
     if (gguf_ctx_read) {
         gguf_free(gguf_ctx_read);
     }
     ggml_backend_free(backend);
-    
+
     printf("\n");
     return std::make_pair(npass, ntest);
 }
