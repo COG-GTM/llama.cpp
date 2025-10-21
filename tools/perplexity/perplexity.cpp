@@ -885,7 +885,7 @@ static void hellaswag_score(llama_context * ctx, const common_params & params) {
         // each task has 4 unique sequence ids - one for each ending
         // the common prefix is shared among the 4 sequences to save tokens
         // we extract logits only from the last common token and from all ending tokens of each sequence
-        while (n_cur + (int) hs_data[i1].required_tokens <= n_ctx) {
+        while (n_cur >= 0 && n_cur + (int) hs_data[i1].required_tokens <= n_ctx && n_cur + (int) hs_data[i1].required_tokens >= n_cur) {
             auto & hs_cur = hs_data[i1];
             int n_logits = 0;
 
@@ -954,7 +954,12 @@ static void hellaswag_score(llama_context * ctx, const common_params & params) {
             auto & hs_cur = hs_data[i];
 
             // get the logits of the last token of the common prefix
-            std::memcpy(tok_logits.data(), batch_logits.data() + hs_cur.i_logits*n_vocab, n_vocab*sizeof(float));
+            size_t offset = hs_cur.i_logits * n_vocab;
+            if (offset > batch_logits.size() || offset + n_vocab > batch_logits.size()) {
+                LOG_ERR("%s: logits offset out of bounds\n", __func__);
+                return;
+            }
+            std::memcpy(tok_logits.data(), batch_logits.data() + offset, n_vocab*sizeof(float));
 
             const auto first_probs = softmax(tok_logits);
 
@@ -1078,7 +1083,9 @@ static std::vector<winogrande_entry> load_winogrande_from_csv(const std::string 
         result.emplace_back();
         auto& wg = result.back();
         wg.first = sentence.substr(0, where);
-        wg.second = sentence.substr(where + 1, sentence.size() - where - 1);
+        if (where + 1 < sentence.size()) {
+            wg.second = sentence.substr(where + 1, sentence.size() - where - 1);
+        }
         wg.choices[0] = std::move(choice1);
         wg.choices[1] = std::move(choice2);
         wg.answer = i_answer;
