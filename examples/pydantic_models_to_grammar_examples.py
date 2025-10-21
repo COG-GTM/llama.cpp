@@ -25,6 +25,17 @@ def create_completion(host, prompt, gbnf_grammar):
     See
     https://github.com/ggml-org/llama.cpp/tree/HEAD/tools/server#api-endpoints
     """
+    import urllib.parse
+    
+    blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0']
+    if host in blocked_hosts:
+        raise ValueError(f"Invalid host: localhost not allowed")
+    if (host.startswith('10.') or 
+        host.startswith('192.168.') or
+        host.startswith('169.254.') or
+        any(host.startswith(f'172.{i}.') for i in range(16, 32))):
+        raise ValueError(f"Invalid host: private IP ranges not allowed")
+    
     print(f"  Request:\n    Grammar:\n{textwrap.indent(gbnf_grammar, '      ')}\n    Prompt:\n{textwrap.indent(prompt.rstrip(), '      ')}")
     headers = {"Content-Type": "application/json"}
     data = {"prompt": prompt, "grammar": gbnf_grammar}
