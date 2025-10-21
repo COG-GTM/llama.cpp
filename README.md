@@ -542,6 +542,81 @@ To learn more about model quantization, [read this documentation](tools/quantize
 - [Performance troubleshooting](docs/development/token_generation_performance_tips.md)
 - [GGML tips & tricks](https://github.com/ggml-org/llama.cpp/wiki/GGML-Tips-&-Tricks)
 
+#### Testing
+
+##### Memory Leak Testing
+
+The repository includes comprehensive memory leak regression tests to ensure proper memory management across various lifecycle scenarios. These tests go beyond the existing AddressSanitizer (ASan) integration by providing dedicated leak detection test suites.
+
+**Running with AddressSanitizer:**
+
+The primary memory leak detection mechanism uses AddressSanitizer, which is configured as a build option:
+
+```bash
+# Build with AddressSanitizer enabled
+cmake -B build -DLLAMA_SANITIZE_ADDRESS=ON -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+
+# Run the memory leak regression tests
+cd build
+ctest -R test-memory-leaks --output-on-failure
+
+# Or run directly
+./bin/test-memory-leaks
+```
+
+Other available sanitizers:
+- `LLAMA_SANITIZE_THREAD=ON` - Detects data races (note: runs without OpenMP)
+- `LLAMA_SANITIZE_UNDEFINED=ON` - Detects undefined behavior
+
+**Running with Valgrind:**
+
+Optional Valgrind integration is available for additional leak checking:
+
+```bash
+# Build the tests (Valgrind target is automatically configured if valgrind is installed)
+cmake -B build
+cmake --build build
+
+# Run memory leak tests with Valgrind
+cd build
+make test-valgrind
+```
+
+The Valgrind target runs with comprehensive leak detection flags:
+- `--leak-check=full` - Detailed leak information
+- `--show-leak-kinds=all` - Reports all leak types
+- `--track-origins=yes` - Tracks origin of uninitialized values
+
+**Test Coverage:**
+
+The `test-memory-leaks.cpp` suite includes 10 comprehensive tests covering:
+
+1. **Backend initialization cycles** - Repeated `llama_backend_init()` / `llama_backend_free()` cycles
+2. **Model load/unload cycles** - Repeated model loading and cleanup (10 iterations)
+3. **Context lifecycle** - Context creation and destruction patterns (10 iterations)
+4. **Multiple contexts per model** - Creating multiple contexts from the same model (5 contexts)
+5. **Sampler lifecycle** - Sampler creation, chain operations, and cleanup
+6. **Batch operations** - Batch allocation and deallocation patterns
+7. **KV cache clearing** - Memory clearing operations on contexts
+8. **Threaded contexts** - Concurrent model usage with multiple threads
+9. **Model load cancellation** - Cleanup when canceling model loading mid-process
+10. **Error condition cleanup** - Proper cleanup when operations fail (e.g., invalid model path)
+
+All tests follow proper cleanup order: sampler → context → model → backend.
+
+**Environment Variables:**
+
+- `LLAMACPP_TEST_MODELFILE` - Path to test model file (required for running tests)
+
+**Continuous Integration:**
+
+The GitHub Actions CI automatically runs all tests with all three sanitizers (ADDRESS, THREAD, UNDEFINED) on every pull request to catch memory issues before they reach production.
+
+**Known Issues:**
+
+- `test-opt.cpp` is currently disabled with `LLAMA_SANITIZE_ADDRESS` due to a known memory leak in `ggml_opt_alloc()` called within a loop (see `tests/test-opt.cpp:300`)
+
 #### Seminal papers and background on the models
 
 If your issue is with model generation quality, then please at least scan the following links and papers to understand the limitations of LLaMA models. This is especially important when choosing an appropriate model size and appreciating both the significant and subtle differences between LLaMA models and ChatGPT:

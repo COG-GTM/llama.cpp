@@ -201,6 +201,7 @@ llama_build_and_test(test-backend-ops.cpp)
 
 llama_build_and_test(test-model-load-cancel.cpp  LABEL "model")
 llama_build_and_test(test-autorelease.cpp        LABEL "model")
+llama_build_and_test(test-memory-leaks.cpp       LABEL "model")
 
 if (NOT GGML_BACKEND_DL)
     # these tests use the backends directly and cannot be built with dynamic loading
@@ -219,3 +220,23 @@ target_link_libraries(${LLAMA_TEST_NAME} PRIVATE mtmd)
 get_filename_component(TEST_TARGET test-c.c NAME_WE)
 add_executable(${TEST_TARGET} test-c.c)
 target_link_libraries(${TEST_TARGET} PRIVATE llama)
+
+# Optional Valgrind target for memory leak checking
+find_program(VALGRIND_EXECUTABLE valgrind)
+if(VALGRIND_EXECUTABLE)
+    add_custom_target(test-valgrind
+        COMMAND ${VALGRIND_EXECUTABLE}
+            --leak-check=full
+            --show-leak-kinds=all
+            --track-origins=yes
+            --error-exitcode=1
+            ${CMAKE_CURRENT_BINARY_DIR}/test-memory-leaks
+        DEPENDS test-memory-leaks
+        COMMENT "Running memory leak tests with Valgrind"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    )
+    message(STATUS "Valgrind found: ${VALGRIND_EXECUTABLE}")
+    message(STATUS "Run 'make test-valgrind' to check for memory leaks with Valgrind")
+else()
+    message(STATUS "Valgrind not found - install it for additional leak checking")
+endif()
