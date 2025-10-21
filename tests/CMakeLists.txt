@@ -225,10 +225,10 @@ target_link_libraries(${TEST_TARGET} PRIVATE llama)
 find_program(VALGRIND_EXECUTABLE valgrind)
 if(VALGRIND_EXECUTABLE)
     add_custom_target(test-valgrind
-        COMMAND ${VALGRIND_EXECUTABLE} 
-            --leak-check=full 
-            --show-leak-kinds=all 
-            --track-origins=yes 
+        COMMAND ${VALGRIND_EXECUTABLE}
+            --leak-check=full
+            --show-leak-kinds=all
+            --track-origins=yes
             --error-exitcode=1
             ${CMAKE_CURRENT_BINARY_DIR}/test-memory-leaks
         DEPENDS test-memory-leaks
