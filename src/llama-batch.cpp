@@ -842,19 +842,54 @@ struct llama_batch llama_batch_init(int32_t n_tokens_alloc, int32_t embd, int32_
     };
 
     if (embd) {
+        if (n_tokens_alloc > 0 && embd > 0 && n_tokens_alloc > SIZE_MAX / (sizeof(float) * embd)) {
+            LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+            return batch;
+        }
         batch.embd = (float *) malloc(sizeof(float) * n_tokens_alloc * embd);
     } else {
+        if (n_tokens_alloc > SIZE_MAX / sizeof(llama_token)) {
+            LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+            return batch;
+        }
         batch.token = (llama_token *) malloc(sizeof(llama_token) * n_tokens_alloc);
     }
 
+    if (n_tokens_alloc > SIZE_MAX / sizeof(llama_pos)) {
+        LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+        llama_batch_free(batch);
+        return batch;
+    }
     batch.pos      = (llama_pos *)     malloc(sizeof(llama_pos)      * n_tokens_alloc);
+    
+    if (n_tokens_alloc > SIZE_MAX / sizeof(int32_t)) {
+        LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+        llama_batch_free(batch);
+        return batch;
+    }
     batch.n_seq_id = (int32_t *)       malloc(sizeof(int32_t)        * n_tokens_alloc);
+    
+    if (n_tokens_alloc + 1 > SIZE_MAX / sizeof(llama_seq_id *)) {
+        LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+        llama_batch_free(batch);
+        return batch;
+    }
     batch.seq_id   = (llama_seq_id **) malloc(sizeof(llama_seq_id *) * (n_tokens_alloc + 1));
     for (int i = 0; i < n_tokens_alloc; ++i) {
+        if (n_seq_max > SIZE_MAX / sizeof(llama_seq_id)) {
+            LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+            llama_batch_free(batch);
+            return batch;
+        }
         batch.seq_id[i] = (llama_seq_id *) malloc(sizeof(llama_seq_id) * n_seq_max);
     }
     batch.seq_id[n_tokens_alloc] = nullptr;
 
+    if (n_tokens_alloc > SIZE_MAX / sizeof(int8_t)) {
+        LLAMA_LOG_ERROR("%s: integer overflow in memory allocation\n", __func__);
+        llama_batch_free(batch);
+        return batch;
+    }
     batch.logits   = (int8_t *)        malloc(sizeof(int8_t)         * n_tokens_alloc);
 
     return batch;
