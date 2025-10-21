@@ -48,6 +48,11 @@ struct DownloadButton: View {
 
             do {
                 if let temporaryURL = temporaryURL {
+                    let tempDir = FileManager.default.temporaryDirectory
+                    guard temporaryURL.path.hasPrefix(tempDir.path) else {
+                        print("Error: Invalid temporary file path")
+                        return
+                    }
                     try FileManager.default.copyItem(at: temporaryURL, to: fileURL)
                     print("Writing to \(filename) completed")
 

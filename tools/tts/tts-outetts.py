@@ -133,8 +133,44 @@ if len(sys.argv) <= 3:
     print("usage: python tts-outetts.py http://server-llm:port http://server-dec:port \"text\"")
     exit(1)
 
+def is_safe_url(url):
+    """Validate URL to prevent SSRF attacks"""
+    import urllib.parse
+    
+    if not url.startswith(('http://', 'https://')):
+        return False
+    
+    parsed = urllib.parse.urlparse(url)
+    hostname = parsed.hostname
+    
+    if not hostname:
+        return False
+    
+    blocked_hosts = [
+        'localhost', '127.0.0.1', '0.0.0.0'
+    ]
+    
+    if hostname in blocked_hosts:
+        return False
+    
+    if (hostname.startswith('10.') or 
+        hostname.startswith('192.168.') or
+        hostname.startswith('169.254.') or
+        any(hostname.startswith(f'172.{i}.') for i in range(16, 32))):
+        return False
+    
+    return True
+
 host_llm = sys.argv[1]
 host_dec = sys.argv[2]
+
+if not is_safe_url(host_llm):
+    print(f"Error: Invalid or unsafe URL for LLM host: {host_llm}")
+    sys.exit(1)
+
+if not is_safe_url(host_dec):
+    print(f"Error: Invalid or unsafe URL for decoder host: {host_dec}")
+    sys.exit(1)
 text = sys.argv[3]
 
 prefix = """<|im_start|>

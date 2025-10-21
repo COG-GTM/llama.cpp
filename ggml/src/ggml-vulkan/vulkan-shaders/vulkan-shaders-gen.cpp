@@ -752,7 +752,16 @@ void process_shaders() {
 
 void write_output_files() {
     FILE* hdr = fopen(target_hpp.c_str(), "w");
+    if (hdr == nullptr) {
+        std::cerr << "Error opening header file: " << target_hpp << " (" << strerror(errno) << ")\n";
+        return;
+    }
     FILE* src = fopen(target_cpp.c_str(), "w");
+    if (src == nullptr) {
+        std::cerr << "Error opening source file: " << target_cpp << " (" << strerror(errno) << ")\n";
+        fclose(hdr);
+        return;
+    }
 
     fprintf(hdr, "#include <cstdint>\n\n");
     fprintf(src, "#include \"%s\"\n\n", basename(target_hpp).c_str());

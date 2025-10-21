@@ -317,6 +317,9 @@ if __name__ == '__main__':
         lora_model = torch.load(input_model, map_location="cpu", weights_only=True)
 
     # load LoRA config
+    if not os.path.isfile(lora_config) or not lora_config.endswith(('.json', '.JSON')):
+        logger.error(f"Invalid LoRA config file: {lora_config}")
+        sys.exit(1)
     with open(lora_config, "r") as f:
         lparams: dict[str, Any] = json.load(f)
 

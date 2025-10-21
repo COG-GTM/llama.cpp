@@ -29,13 +29,19 @@ def replace_placeholders(shader_text, replacements):
 
 def write_shader(shader_name, shader_code, output_dir, outfile):
     if output_dir:
+        if not os.path.isdir(output_dir):
+            raise ValueError(f"Invalid output directory: {output_dir}")
         wgsl_filename = os.path.join(output_dir, f"{shader_name}.wgsl")
+        if not wgsl_filename.startswith(os.path.abspath(output_dir)):
+            raise ValueError(f"Path traversal detected: {wgsl_filename}")
         with open(wgsl_filename, "w", encoding="utf-8") as f_out:
             f_out.write(shader_code)
     outfile.write(f'const char* wgsl_{shader_name} = R"({shader_code})";\n\n')
 
 
 def generate_variants(shader_path, output_dir, outfile):
+    if not os.path.isfile(shader_path) or not shader_path.endswith('.wgsl'):
+        raise ValueError(f"Invalid shader file: {shader_path}")
     shader_base_name = shader_path.split("/")[-1].split(".")[0]
 
     with open(shader_path, "r", encoding="utf-8") as f:
@@ -71,14 +77,22 @@ def main():
     parser.add_argument("--output_dir")
     args = parser.parse_args()
 
+    if not os.path.isdir(args.input_dir):
+        raise ValueError(f"Invalid input directory: {args.input_dir}")
+
     if args.output_dir:
         os.makedirs(args.output_dir, exist_ok=True)
 
-    with open(args.output_file, "w", encoding="utf-8") as out:
+    output_file_path = os.path.abspath(args.output_file)
+    with open(output_file_path, "w", encoding="utf-8") as out:
         out.write("// Auto-generated shader embedding\n\n")
+        input_dir_abs = os.path.abspath(args.input_dir)
         for fname in sorted(os.listdir(args.input_dir)):
             if fname.endswith(".wgsl"):
-                generate_variants(os.path.join(args.input_dir, fname), args.output_dir, out)
+                shader_path = os.path.join(input_dir_abs, fname)
+                if not shader_path.startswith(input_dir_abs):
+                    continue
+                generate_variants(shader_path, args.output_dir, out)
 
 
 if __name__ == "__main__":

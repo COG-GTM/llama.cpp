@@ -604,6 +604,12 @@ static const struct ggml_backend_buffer_i ggml_backend_multi_buffer_i = {
 ggml_backend_buffer_t ggml_backend_multi_buffer_alloc_buffer(ggml_backend_buffer_t * buffers, size_t n_buffers) {
     ggml_backend_multi_buffer_context * ctx = (ggml_backend_multi_buffer_context *) malloc(sizeof(struct ggml_backend_multi_buffer_context));
     ctx->n_buffers = n_buffers;
+    
+    if (n_buffers > 0 && n_buffers > SIZE_MAX / sizeof(ggml_backend_buffer_t)) {
+        GGML_LOG_ERROR("%s: integer overflow in buffers allocation\n", __func__);
+        free(ctx);
+        return NULL;
+    }
     ctx->buffers = (ggml_backend_buffer_t *) malloc(n_buffers * sizeof(ggml_backend_buffer_t));
 
     GGML_ASSERT(ctx->buffers != NULL);
@@ -1194,6 +1200,11 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
                 i_split++;
                 if (i_split >= sched->splits_capacity) {
                     sched->splits_capacity *= 2;
+                    
+                    if (sched->splits_capacity > SIZE_MAX / sizeof(struct ggml_backend_sched_split)) {
+                        GGML_LOG_ERROR("%s: integer overflow in splits reallocation\n", __func__);
+                        return;
+                    }
                     sched->splits = (ggml_backend_sched_split *)
                         realloc(sched->splits, sched->splits_capacity * sizeof(struct ggml_backend_sched_split));
                     GGML_ASSERT(sched->splits != NULL);
@@ -1284,6 +1295,11 @@ void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct ggml_cgra
     int graph_size = std::max(graph->n_nodes, graph->n_leafs) + sched->n_splits*GGML_SCHED_MAX_SPLIT_INPUTS*2*sched->n_copies;
     if (sched->graph.size < graph_size) {
         sched->graph.size = graph_size;
+        
+        if (graph_size > 0 && (size_t)graph_size > SIZE_MAX / sizeof(struct ggml_tensor *)) {
+            GGML_LOG_ERROR("%s: integer overflow in graph nodes/leafs reallocation\n", __func__);
+            return;
+        }
         sched->graph.nodes = (ggml_tensor **) realloc(sched->graph.nodes, graph_size * sizeof(struct ggml_tensor *));
         sched->graph.leafs = (ggml_tensor **) realloc(sched->graph.leafs, graph_size * sizeof(struct ggml_tensor *));
         GGML_ASSERT(sched->graph.nodes != NULL);
@@ -1609,8 +1625,25 @@ ggml_backend_sched_t ggml_backend_sched_new(
     // initialize hash table
     // FIXME: needs to be size*2 to account for leafs (do it in graph_split instead)
     sched->hash_set    = ggml_hash_set_new(graph_size);
+    
+    if (sched->hash_set.size > SIZE_MAX / sizeof(sched->hv_tensor_backend_ids[0])) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     sched->hv_tensor_backend_ids = (int *) malloc(sched->hash_set.size * sizeof(sched->hv_tensor_backend_ids[0]));
-    sched->hv_tensor_copies      = (ggml_tensor **) malloc(sched->hash_set.size * sched->n_backends * sched->n_copies * sizeof(struct ggml_tensor *));
+    
+    size_t tensor_copies_size = sched->hash_set.size;
+    if (tensor_copies_size > SIZE_MAX / sched->n_backends) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    tensor_copies_size *= sched->n_backends;
+    if (tensor_copies_size > SIZE_MAX / sched->n_copies) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    tensor_copies_size *= sched->n_copies;
+    if (tensor_copies_size > SIZE_MAX / sizeof(struct ggml_tensor *)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    sched->hv_tensor_copies      = (ggml_tensor **) malloc(tensor_copies_size * sizeof(struct ggml_tensor *));
 
     const size_t ggml_sched_max_splits = graph_size; // at most there is one split for each node in the graph
     const size_t nodes_size = graph_size + ggml_sched_max_splits*GGML_SCHED_MAX_SPLIT_INPUTS*2;
@@ -1899,7 +1932,30 @@ static void graph_copy_init_tensor(struct ggml_hash_set * hash_set, struct ggml_
 struct ggml_backend_graph_copy ggml_backend_graph_copy(ggml_backend_t backend, struct ggml_cgraph * graph) {
     GGML_ASSERT(graph);
     struct ggml_hash_set hash_set = ggml_hash_set_new(graph->visited_hash_set.size);
+    
+    if (hash_set.size > SIZE_MAX / sizeof(node_copies[0])) {
+        GGML_LOG_ERROR("%s: integer overflow in node_copies allocation\n", __func__);
+        ggml_hash_set_free(&hash_set);
+        return {
+            /* .buffer           = */ NULL,
+            /* .ctx_allocated    = */ NULL,
+            /* .ctx_unallocated  = */ NULL,
+            /* .graph            = */ NULL,
+        };
+    }
     struct ggml_tensor ** node_copies = (ggml_tensor **) calloc(hash_set.size, sizeof(node_copies[0])); // NOLINT
+    
+    if (hash_set.size > SIZE_MAX / sizeof(node_init[0])) {
+        GGML_LOG_ERROR("%s: integer overflow in node_init allocation\n", __func__);
+        ggml_hash_set_free(&hash_set);
+        free(node_copies);
+        return {
+            /* .buffer           = */ NULL,
+            /* .ctx_allocated    = */ NULL,
+            /* .ctx_unallocated  = */ NULL,
+            /* .graph            = */ NULL,
+        };
+    }
     bool * node_init = (bool *) calloc(hash_set.size, sizeof(node_init[0]));
 
     struct ggml_init_params params = {

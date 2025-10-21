@@ -277,7 +277,8 @@ static ggml_tensor * map_tensor(std::map<ggml_tensor *, ggml_tensor *> & tensor_
     }
     new_tensor->flags = tensor->flags;
     memcpy(new_tensor->op_params, tensor->op_params, sizeof(tensor->op_params));
-    strcpy(new_tensor->name, tensor->name);
+    strncpy(new_tensor->name, tensor->name, GGML_MAX_NAME - 1);
+    new_tensor->name[GGML_MAX_NAME - 1] = '\0';
     new_tensor->data = tensor->data;
     new_tensor->buffer = tensor->buffer;
     new_tensor->extra = tensor->extra;

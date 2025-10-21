@@ -542,7 +542,11 @@ if args.clip_model_is_vision or not os.path.exists(dir_model + "/vocab.json") or
     vocab = None
     tokens = None
 else:
-    with open(dir_model + "/vocab.json", "r", encoding="utf-8") as f:
+    vocab_path = dir_model + "/vocab.json"
+    if not os.path.isfile(vocab_path):
+        print(f"Error: vocab.json not found at {vocab_path}")
+        sys.exit(1)
+    with open(vocab_path, "r", encoding="utf-8") as f:
         vocab = json.load(f)
         tokens = [key for key in vocab]
 

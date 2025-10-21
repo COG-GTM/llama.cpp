@@ -9385,8 +9385,19 @@ static void ggml_vk_test_matmul(ggml_backend_vk_context * ctx, size_t m, size_t 
     vk_buffer d_Y = ggml_vk_create_buffer_check(ctx->device, sizeof(Y_TYPE) * y_ne, {vk::MemoryPropertyFlagBits::eDeviceLocal});
     vk_buffer d_D = ggml_vk_create_buffer_check(ctx->device, sizeof(float) * d_ne, {vk::MemoryPropertyFlagBits::eDeviceLocal});
 
+    if (x_ne > SIZE_MAX / sizeof(X_TYPE)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     X_TYPE* x = (X_TYPE *) malloc(sizeof(X_TYPE) * x_ne);
+    
+    if (y_ne > SIZE_MAX / sizeof(Y_TYPE)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     Y_TYPE* y = (Y_TYPE *) malloc(sizeof(Y_TYPE) * y_ne);
+    
+    if (d_ne > SIZE_MAX / sizeof(float)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     float* d = (float *) malloc(sizeof(float) * d_ne);
 
     for (size_t i = 0; i < x_ne; i++) {

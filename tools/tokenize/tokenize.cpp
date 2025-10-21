@@ -46,8 +46,12 @@ static void llama_log_callback_null(ggml_log_level level, const char * text, voi
 static std::string read_prompt_from_file(const char * filepath, bool & success) {
     success = false;
 
+    if (!filepath || strlen(filepath) == 0) {
+        fprintf(stderr, "%s: invalid file path\n", __func__);
+        return std::string();
+    }
     std::ifstream in(filepath, std::ios::binary);
-    if (!in) {
+    if (!in || !in.good()) {
         fprintf(stderr, "%s: could not open file '%s' for reading: %s\n", __func__, filepath, strerror(errno));
         return std::string();
     }
@@ -95,6 +99,9 @@ static std::vector<std::string> ingest_args(int raw_argc, char ** raw_argv) {
 
     for (int i = 0; i < argc; ++i) {
         int length_needed = WideCharToMultiByte(CP_UTF8, 0, wargv[i], wcslen(wargv[i]), 0, 0, NULL, NULL);
+        if (length_needed < 0 || length_needed >= INT_MAX) {
+            GGML_ABORT("WideCharToMultiByte returned invalid length");
+        }
         char * output_buf = (char *) calloc(length_needed+1, sizeof(char));
         GGML_ASSERT(output_buf);
 
@@ -169,6 +176,9 @@ static void write_utf8_cstr_to_stdout(const char * str, bool & invalid_utf8) {
             GGML_ABORT("MultiByteToWideChar() failed in an unexpected way.");
         }
 
+        if (length_needed < 0 || length_needed >= INT_MAX) {
+            GGML_ABORT("MultiByteToWideChar returned invalid length");
+        }
         LPWSTR wstr = (LPWSTR) calloc(length_needed+1, sizeof(*wstr));
         GGML_ASSERT(wstr);
 

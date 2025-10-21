@@ -2903,6 +2903,10 @@ void iq2xs_init_impl(enum ggml_type type) {
     uint16_t * kneighbors_q2xs;
 
     //printf("================================================================= %s(grid_size = %d)\n", __func__, grid_size);
+    if (grid_size > 0 && (size_t)grid_size > SIZE_MAX / sizeof(uint64_t)) {
+        fprintf(stderr, "%s: integer overflow in the_grid allocation\n", __func__);
+        return;
+    }
     uint64_t * the_grid = (uint64_t *)malloc(grid_size*sizeof(uint64_t));
     for (int k = 0; k < grid_size; ++k) {
         int8_t * pos = (int8_t *)(the_grid + k);
@@ -2913,6 +2917,12 @@ void iq2xs_init_impl(enum ggml_type type) {
     }
     kgrid_q2xs = the_grid;
     iq2_data[gindex].grid = the_grid;
+    
+    if (kmap_size > 0 && (size_t)kmap_size > SIZE_MAX / sizeof(int)) {
+        fprintf(stderr, "%s: integer overflow in kmap_q2xs allocation\n", __func__);
+        free(the_grid);
+        return;
+    }
     kmap_q2xs = (int *)malloc(kmap_size*sizeof(int));
     iq2_data[gindex].map = kmap_q2xs;
     for (int i = 0; i < kmap_size; ++i) kmap_q2xs[i] = -1;
@@ -2928,6 +2938,13 @@ void iq2xs_init_impl(enum ggml_type type) {
         kmap_q2xs[index] = i;
     }
     int8_t pos[8];
+    
+    if (grid_size > 0 && (size_t)grid_size > SIZE_MAX / (2 * sizeof(int))) {
+        fprintf(stderr, "%s: integer overflow in dist2 allocation\n", __func__);
+        free(kmap_q2xs);
+        free(the_grid);
+        return;
+    }
     int * dist2 = (int *)malloc(2*grid_size*sizeof(int));
     int num_neighbors = 0, num_not_in_map = 0;
     for (int i = 0; i < kmap_size; ++i) {
@@ -3497,6 +3514,10 @@ void iq3xs_init_impl(int grid_size) {
     uint16_t * kneighbors_q3xs;
 
     //printf("================================================================= %s(grid_size = %d)\n", __func__, grid_size);
+    if (grid_size > 0 && (size_t)grid_size > SIZE_MAX / sizeof(uint32_t)) {
+        fprintf(stderr, "%s: integer overflow in the_grid allocation\n", __func__);
+        return;
+    }
     uint32_t * the_grid = (uint32_t *)malloc(grid_size*sizeof(uint32_t));
     for (int k = 0; k < grid_size; ++k) {
         int8_t * pos = (int8_t *)(the_grid + k);
@@ -3507,6 +3528,12 @@ void iq3xs_init_impl(int grid_size) {
     }
     kgrid_q3xs = the_grid;
     iq3_data[gindex].grid = the_grid;
+    
+    if (kmap_size > 0 && (size_t)kmap_size > SIZE_MAX / sizeof(int)) {
+        fprintf(stderr, "%s: integer overflow in kmap_q3xs allocation\n", __func__);
+        free(the_grid);
+        return;
+    }
     kmap_q3xs = (int *)malloc(kmap_size*sizeof(int));
     iq3_data[gindex].map = kmap_q3xs;
     for (int i = 0; i < kmap_size; ++i) kmap_q3xs[i] = -1;
@@ -3522,6 +3549,13 @@ void iq3xs_init_impl(int grid_size) {
         kmap_q3xs[index] = i;
     }
     int8_t pos[4];
+    
+    if (grid_size > 0 && (size_t)grid_size > SIZE_MAX / (2 * sizeof(int))) {
+        fprintf(stderr, "%s: integer overflow in dist2 allocation\n", __func__);
+        free(kmap_q3xs);
+        free(the_grid);
+        return;
+    }
     int * dist2 = (int *)malloc(2*grid_size*sizeof(int));
     int num_neighbors = 0, num_not_in_map = 0;
     for (int i = 0; i < kmap_size; ++i) {

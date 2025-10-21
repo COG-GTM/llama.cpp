@@ -438,7 +438,11 @@ class HttpClient {
             printe("Fetching resource '%s' failed: %s\n", url.c_str(), curl_easy_strerror(res));
             return 1;
         }
-        if (!output_file.empty()) {
+        if (!output_file.empty() && !output_file_partial.empty()) {
+            if (output_file.find("..") != std::string::npos || output_file_partial.find("..") != std::string::npos) {
+                printe("Invalid file path\n");
+                return 1;
+            }
             std::filesystem::rename(output_file_partial, output_file);
         }
 
@@ -502,7 +506,38 @@ class HttpClient {
         }
     }
 
+    bool is_safe_url(const std::string & url) {
+        if (url.find("https://") != 0 && url.find("http://") != 0) {
+            return false;
+        }
+        
+        std::vector<std::string> blocked_hosts = {
+            "localhost", "127.0.0.1", "0.0.0.0",
+            "10.", "172.16.", "172.17.", "172.18.", "172.19.",
+            "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+            "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+            "172.30.", "172.31.", "192.168.", "169.254."
+        };
+        
+        for (const auto & blocked : blocked_hosts) {
+            size_t proto_end = url.find("://");
+            if (proto_end != std::string::npos) {
+                std::string host_part = url.substr(proto_end + 3);
+                if (host_part.find(blocked) == 0) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
     CURLcode perform(const std::string & url) {
+        if (!is_safe_url(url)) {
+            printe("URL validation failed: potentially unsafe URL\n");
+            return CURLE_URL_MALFORMAT;
+        }
+        
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
@@ -654,6 +689,10 @@ class LlamaData {
 #ifdef LLAMA_USE_CURL
     int download(const std::string & url, const std::string & output_file, const bool progress,
                  const std::vector<std::string> & headers = {}, std::string * response_str = nullptr) {
+        if (!output_file.empty() && output_file.find("..") != std::string::npos) {
+            printe("Invalid output file path\n");
+            return 1;
+        }
         HttpClient http;
         if (http.init(url, headers, output_file, progress, response_str)) {
             return 1;

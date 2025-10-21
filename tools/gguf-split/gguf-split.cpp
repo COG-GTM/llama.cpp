@@ -365,8 +365,12 @@ static void gguf_split(const split_params & split_params) {
         /*.ctx      = */ &ctx_meta,
     };
 
+    if (split_params.input.empty()) {
+        fprintf(stderr, "%s: invalid input file path\n", __func__);
+        exit(EXIT_FAILURE);
+    }
     std::ifstream f_input(split_params.input.c_str(), std::ios::binary);
-    if (!f_input.is_open()) {
+    if (!f_input.is_open() || !f_input.good()) {
         fprintf(stderr, "%s:  failed to open input GGUF from %s\n", __func__, split_params.input.c_str());
         exit(EXIT_FAILURE);
     }
@@ -402,7 +406,10 @@ static void gguf_merge(const split_params & split_params) {
     int n_split = 1;
     int total_tensors = 0;
 
-    // avoid overwriting existing output file
+    if (split_params.output.empty()) {
+        fprintf(stderr, "%s: invalid output file path\n", __func__);
+        exit(EXIT_FAILURE);
+    }
     if (std::ifstream(split_params.output.c_str())) {
         fprintf(stderr, "%s: output file %s already exists\n", __func__, split_params.output.c_str());
         exit(EXIT_FAILURE);
@@ -498,17 +505,27 @@ static void gguf_merge(const split_params & split_params) {
     std::ofstream fout;
     if (!split_params.dry_run) {
         fout.open(split_params.output.c_str(), std::ios::binary);
-        fout.exceptions(std::ofstream::failbit); // fail fast on write errors
-        // placeholder for the meta data
+        fout.exceptions(std::ofstream::failbit);
         auto meta_size = gguf_get_meta_size(ctx_out);
         ::zeros(fout, meta_size);
     }
 
-    // Write tensors data
     for (int i_split = 0; i_split < n_split; i_split++) {
         llama_split_path(split_path, sizeof(split_path), split_prefix, i_split, n_split);
+        if (strlen(split_path) == 0) {
+            fprintf(stderr, "%s: invalid split path\n", __func__);
+            for (uint32_t i = 0; i < ctx_ggufs.size(); i++) {
+                gguf_free(ctx_ggufs[i]);
+                ggml_free(ctx_metas[i]);
+            }
+            gguf_free(ctx_out);
+            if (!split_params.dry_run) {
+                fout.close();
+            }
+            exit(EXIT_FAILURE);
+        }
         std::ifstream f_input(split_path, std::ios::binary);
-        if (!f_input.is_open()) {
+        if (!f_input.is_open() || !f_input.good()) {
             fprintf(stderr, "%s:  failed to open input GGUF from %s\n", __func__, split_path);
             for (uint32_t i = 0; i < ctx_ggufs.size(); i++) {
                 gguf_free(ctx_ggufs[i]);

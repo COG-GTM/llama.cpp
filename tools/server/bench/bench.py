@@ -309,6 +309,17 @@ def is_server_listening(server_fqdn, server_port):
 
 
 def is_server_ready(server_fqdn, server_port):
+    import urllib.parse
+    
+    blocked_hosts = ['localhost', '127.0.0.1', '0.0.0.0']
+    if server_fqdn in blocked_hosts:
+        raise ValueError(f"Invalid server FQDN: localhost not allowed")
+    if (server_fqdn.startswith('10.') or 
+        server_fqdn.startswith('192.168.') or
+        server_fqdn.startswith('169.254.') or
+        any(server_fqdn.startswith(f'172.{i}.') for i in range(16, 32))):
+        raise ValueError(f"Invalid server FQDN: private IP ranges not allowed")
+    
     url = f"http://{server_fqdn}:{server_port}/health"
     response = requests.get(url)
     return response.status_code == 200

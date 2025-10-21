@@ -137,6 +137,9 @@ void ggml_print_backtrace(void) {
     }
 #if defined(__linux__)
     FILE * f = fopen("/proc/self/status", "r");
+    if (f == NULL) {
+        return;
+    }
     size_t size = 0;
     char * line = NULL;
     ssize_t length = 0;
@@ -256,7 +259,13 @@ static void ggml_log_internal_v(enum ggml_log_level level, const char * format, 
     if (len < 128) {
         g_logger_state.log_callback(level, buffer, g_logger_state.log_callback_user_data);
     } else {
+        if (len < 0 || len >= INT_MAX) {
+            return; // Invalid length from vsnprintf
+        }
         char * buffer2 = (char *) calloc(len + 1, sizeof(char));
+        if (!buffer2) {
+            return; // Allocation failed
+        }
         vsnprintf(buffer2, len + 1, format, args_copy);
         buffer2[len] = 0;
         g_logger_state.log_callback(level, buffer2, g_logger_state.log_callback_user_data);
@@ -6383,6 +6392,10 @@ void ggml_build_backward_expand(
 
     memset(cgraph->grads,     0, cgraph->visited_hash_set.size*sizeof(struct ggml_tensor *));
     memset(cgraph->grad_accs, 0, cgraph->visited_hash_set.size*sizeof(struct ggml_tensor *));
+    
+    if (cgraph->visited_hash_set.size > SIZE_MAX / sizeof(bool)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     bool * grads_needed = calloc(cgraph->visited_hash_set.size, sizeof(bool));
 
     {

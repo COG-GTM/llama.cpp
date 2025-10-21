@@ -1025,6 +1025,10 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
     }
 
     memcpy(copy.get(), str, len + 1);
+    
+    if (lc->len >= SIZE_MAX / sizeof(char *) - 1) {
+        return;
+    }
     char ** cvec = static_cast<char **>(std::realloc(lc->cvec, sizeof(char *) * (lc->len + 1)));
     if (cvec == nullptr) {
         return;
@@ -1409,8 +1413,12 @@ static void linenoiseEditHistoryNext(struct linenoiseState * l, int dir) {
     if (history_len > 1) {
         /* Update the current history entry before to
          * overwrite it with the next one. */
-        free(history[history_len - 1 - l->history_index]);
-        history[history_len - 1 - l->history_index] = strdup(l->buf);
+        int idx = history_len - 1 - l->history_index;
+        if (idx < 0 || idx >= history_len) {
+            return;
+        }
+        free(history[idx]);
+        history[idx] = strdup(l->buf);
         /* Show the new entry */
         l->history_index += (dir == LINENOISE_HISTORY_PREV) ? 1 : -1;
         if (l->history_index < 0) {
@@ -1420,7 +1428,11 @@ static void linenoiseEditHistoryNext(struct linenoiseState * l, int dir) {
             l->history_index = history_len-1;
             return;
         }
-        strncpy(l->buf,history[history_len - 1 - l->history_index],l->buflen);
+        idx = history_len - 1 - l->history_index;
+        if (idx < 0 || idx >= history_len) {
+            return;
+        }
+        strncpy(l->buf,history[idx],l->buflen);
         l->buf[l->buflen-1] = '\0';
         l->len = l->pos = strlen(l->buf);
         refreshLine(l);
@@ -1897,13 +1909,14 @@ int linenoiseHistoryAdd(const char *line) {
 
     /* Initialization on first call. */
     if (history == NULL) {
+        if (history_max_len > 100000) return 0; // Prevent overflow
         history = (char**) malloc(sizeof(char*)*history_max_len);
         if (history == NULL) return 0;
         memset(history,0,(sizeof(char*)*history_max_len));
     }
 
     /* Don't add duplicated lines. */
-    if (history_len && !strcmp(history[history_len-1], line)) return 0;
+    if (history_len > 0 && history_len <= history_max_len && !strcmp(history[history_len-1], line)) return 0;
 
     /* Add an heap allocated copy of the line in the history.
      * If we reached the max length, remove the older line. */
@@ -1926,7 +1939,7 @@ int linenoiseHistoryAdd(const char *line) {
 int linenoiseHistorySetMaxLen(int len) {
     char **new_ptr;
 
-    if (len < 1) return 0;
+    if (len < 1 || len > 100000) return 0; // Prevent overflow
     if (history) {
         int tocopy = history_len;
 
@@ -1936,12 +1949,16 @@ int linenoiseHistorySetMaxLen(int len) {
         /* If we can't copy everything, free the elements we'll not use. */
         if (len < tocopy) {
             int j;
+            int diff = tocopy - len;
+            if (diff < 0 || diff > tocopy) return 0; // Prevent overflow
 
-            for (j = 0; j < tocopy-len; j++) free(history[j]);
+            for (j = 0; j < diff; j++) free(history[j]);
             tocopy = len;
         }
         memset(new_ptr,0,sizeof(char*)*len);
-        memcpy(new_ptr,history+(history_len-tocopy), sizeof(char*)*tocopy);
+        int offset = history_len - tocopy;
+        if (offset < 0 || offset > history_len) return 0; // Prevent overflow
+        memcpy(new_ptr,history+offset, sizeof(char*)*tocopy);
         free(history);
         history = new_ptr;
     }

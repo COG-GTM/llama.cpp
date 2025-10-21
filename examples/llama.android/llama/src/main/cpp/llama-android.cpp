@@ -286,16 +286,75 @@ Java_android_llama_cpp_LLamaAndroid_new_1batch(JNIEnv *, jobject, jint n_tokens,
     };
 
     if (embd) {
+        if (n_tokens > 0 && embd > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(float) / (size_t)embd) {
+            LOGe("integer overflow in embd allocation");
+            delete batch;
+            return 0;
+        }
         batch->embd = (float *) malloc(sizeof(float) * n_tokens * embd);
     } else {
+        if (n_tokens > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(llama_token)) {
+            LOGe("integer overflow in token allocation");
+            delete batch;
+            return 0;
+        }
         batch->token = (llama_token *) malloc(sizeof(llama_token) * n_tokens);
     }
 
+    if (n_tokens > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(llama_pos)) {
+        LOGe("integer overflow in pos allocation");
+        if (embd) free(batch->embd); else free(batch->token);
+        delete batch;
+        return 0;
+    }
     batch->pos      = (llama_pos *)     malloc(sizeof(llama_pos)      * n_tokens);
+    
+    if (n_tokens > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(int32_t)) {
+        LOGe("integer overflow in n_seq_id allocation");
+        free(batch->pos);
+        if (embd) free(batch->embd); else free(batch->token);
+        delete batch;
+        return 0;
+    }
     batch->n_seq_id = (int32_t *)       malloc(sizeof(int32_t)        * n_tokens);
+    
+    if (n_tokens > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(llama_seq_id *)) {
+        LOGe("integer overflow in seq_id allocation");
+        free(batch->n_seq_id);
+        free(batch->pos);
+        if (embd) free(batch->embd); else free(batch->token);
+        delete batch;
+        return 0;
+    }
     batch->seq_id   = (llama_seq_id **) malloc(sizeof(llama_seq_id *) * n_tokens);
+    
     for (int i = 0; i < n_tokens; ++i) {
+        if (n_seq_max > 0 && (size_t)n_seq_max > SIZE_MAX / sizeof(llama_seq_id)) {
+            LOGe("integer overflow in seq_id[%d] allocation", i);
+            for (int j = 0; j < i; ++j) {
+                free(batch->seq_id[j]);
+            }
+            free(batch->seq_id);
+            free(batch->n_seq_id);
+            free(batch->pos);
+            if (embd) free(batch->embd); else free(batch->token);
+            delete batch;
+            return 0;
+        }
         batch->seq_id[i] = (llama_seq_id *) malloc(sizeof(llama_seq_id) * n_seq_max);
+    }
+    
+    if (n_tokens > 0 && (size_t)n_tokens > SIZE_MAX / sizeof(int8_t)) {
+        LOGe("integer overflow in logits allocation");
+        for (int i = 0; i < n_tokens; ++i) {
+            free(batch->seq_id[i]);
+        }
+        free(batch->seq_id);
+        free(batch->n_seq_id);
+        free(batch->pos);
+        if (embd) free(batch->embd); else free(batch->token);
+        delete batch;
+        return 0;
     }
     batch->logits   = (int8_t *)        malloc(sizeof(int8_t)         * n_tokens);
 

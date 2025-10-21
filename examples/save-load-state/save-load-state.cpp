@@ -70,6 +70,10 @@ int main(int argc, char ** argv) {
         const size_t written = llama_state_get_data(ctx, state_mem.data(), state_mem.size());
 
         FILE *fp_write = fopen("dump_state.bin", "wb");
+        if (fp_write == nullptr) {
+            fprintf(stderr, "%s : failed to open dump_state.bin for writing\n", __func__);
+            return 1;
+        }
         fwrite(state_mem.data(), 1, written, fp_write);
         fclose(fp_write);
 
@@ -116,6 +120,10 @@ int main(int argc, char ** argv) {
         std::vector<uint8_t> state_mem;
 
         FILE * fp_read = fopen("dump_state.bin", "rb");
+        if (fp_read == nullptr) {
+            fprintf(stderr, "\n%s : failed to open dump_state.bin for reading\n", __func__);
+            return 1;
+        }
         fseek(fp_read, 0, SEEK_END);
         state_mem.resize(ftell(fp_read));
         fseek(fp_read, 0, SEEK_SET);
@@ -173,6 +181,10 @@ int main(int argc, char ** argv) {
         std::vector<uint8_t> state_mem;
 
         FILE * fp_read = fopen("dump_state.bin", "rb");
+        if (fp_read == nullptr) {
+            fprintf(stderr, "\n%s : failed to open dump_state.bin for reading\n", __func__);
+            return 1;
+        }
         fseek(fp_read, 0, SEEK_END);
         state_mem.resize(ftell(fp_read));
         fseek(fp_read, 0, SEEK_SET);
