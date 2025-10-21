@@ -177,8 +177,7 @@ class DocsGenerator:
         docs_dir.mkdir(exist_ok=True)
 
         ops_file = docs_dir / self.output_filename
-        if not ops_file.endswith((".md", ".MD")):
-
+        if not str(ops_file).endswith((".md", ".MD")):
             raise ValueError(f"Invalid output file: {ops_file}")
 
         with open(ops_file, "w") as f:
