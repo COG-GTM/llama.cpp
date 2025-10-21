@@ -1916,7 +1916,30 @@ static void graph_copy_init_tensor(struct ggml_hash_set * hash_set, struct ggml_
 struct ggml_backend_graph_copy ggml_backend_graph_copy(ggml_backend_t backend, struct ggml_cgraph * graph) {
     GGML_ASSERT(graph);
     struct ggml_hash_set hash_set = ggml_hash_set_new(graph->visited_hash_set.size);
+    
+    if (hash_set.size > SIZE_MAX / sizeof(node_copies[0])) {
+        GGML_LOG_ERROR("%s: integer overflow in node_copies allocation\n", __func__);
+        ggml_hash_set_free(&hash_set);
+        return {
+            /* .buffer           = */ NULL,
+            /* .ctx_allocated    = */ NULL,
+            /* .ctx_unallocated  = */ NULL,
+            /* .graph            = */ NULL,
+        };
+    }
     struct ggml_tensor ** node_copies = (ggml_tensor **) calloc(hash_set.size, sizeof(node_copies[0])); // NOLINT
+    
+    if (hash_set.size > SIZE_MAX / sizeof(node_init[0])) {
+        GGML_LOG_ERROR("%s: integer overflow in node_init allocation\n", __func__);
+        ggml_hash_set_free(&hash_set);
+        free(node_copies);
+        return {
+            /* .buffer           = */ NULL,
+            /* .ctx_allocated    = */ NULL,
+            /* .ctx_unallocated  = */ NULL,
+            /* .graph            = */ NULL,
+        };
+    }
     bool * node_init = (bool *) calloc(hash_set.size, sizeof(node_init[0]));
 
     struct ggml_init_params params = {
