@@ -405,7 +405,9 @@ namespace console {
                     do {
                         count = widths.back();
                         widths.pop_back();
-                        // Move cursor back, print space, and move cursor back again
+                        if (count < 0 || count > 10000) {
+                            count = 0;
+                        }
                         for (int i = 0; i < count; i++) {
                             replace_last(' ');
                             pop_cursor();
