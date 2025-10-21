@@ -506,7 +506,38 @@ class HttpClient {
         }
     }
 
+    bool is_safe_url(const std::string & url) {
+        if (url.find("https://") != 0 && url.find("http://") != 0) {
+            return false;
+        }
+        
+        std::vector<std::string> blocked_hosts = {
+            "localhost", "127.0.0.1", "0.0.0.0",
+            "10.", "172.16.", "172.17.", "172.18.", "172.19.",
+            "172.20.", "172.21.", "172.22.", "172.23.", "172.24.",
+            "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+            "172.30.", "172.31.", "192.168.", "169.254."
+        };
+        
+        for (const auto & blocked : blocked_hosts) {
+            size_t proto_end = url.find("://");
+            if (proto_end != std::string::npos) {
+                std::string host_part = url.substr(proto_end + 3);
+                if (host_part.find(blocked) == 0) {
+                    return false;
+                }
+            }
+        }
+        
+        return true;
+    }
+
     CURLcode perform(const std::string & url) {
+        if (!is_safe_url(url)) {
+            printe("URL validation failed: potentially unsafe URL\n");
+            return CURLE_URL_MALFORMAT;
+        }
+        
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_DEFAULT_PROTOCOL, "https");
