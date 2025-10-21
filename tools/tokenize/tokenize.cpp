@@ -46,8 +46,12 @@ static void llama_log_callback_null(ggml_log_level level, const char * text, voi
 static std::string read_prompt_from_file(const char * filepath, bool & success) {
     success = false;
 
+    if (!filepath || strlen(filepath) == 0) {
+        fprintf(stderr, "%s: invalid file path\n", __func__);
+        return std::string();
+    }
     std::ifstream in(filepath, std::ios::binary);
-    if (!in) {
+    if (!in || !in.good()) {
         fprintf(stderr, "%s: could not open file '%s' for reading: %s\n", __func__, filepath, strerror(errno));
         return std::string();
     }

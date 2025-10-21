@@ -149,8 +149,12 @@ static void usage(const char * executable) {
 }
 
 static int load_legacy_imatrix(const std::string & imatrix_file, std::vector<std::string> & imatrix_datasets, std::unordered_map<std::string, std::vector<float>> & imatrix_data) {
+    if (imatrix_file.empty()) {
+        printf("%s: invalid imatrix file path\n", __func__);
+        exit(1);
+    }
     std::ifstream in(imatrix_file.c_str(), std::ios::binary);
-    if (!in) {
+    if (!in || !in.good()) {
         printf("%s: failed to open %s\n",__func__, imatrix_file.c_str());
         exit(1);
     }
@@ -577,8 +581,11 @@ int main(int argc, char ** argv) {
 
     llama_backend_init();
 
-    // parse command line arguments
     const std::string fname_inp = argv[arg_idx];
+    if (fname_inp.empty()) {
+        fprintf(stderr, "%s: invalid input file path\n", __func__);
+        return 1;
+    }
     arg_idx++;
     std::string fname_out;
 
