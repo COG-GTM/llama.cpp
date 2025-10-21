@@ -1025,6 +1025,10 @@ void linenoiseAddCompletion(linenoiseCompletions *lc, const char *str) {
     }
 
     memcpy(copy.get(), str, len + 1);
+    
+    if (lc->len >= SIZE_MAX / sizeof(char *) - 1) {
+        return;
+    }
     char ** cvec = static_cast<char **>(std::realloc(lc->cvec, sizeof(char *) * (lc->len + 1)));
     if (cvec == nullptr) {
         return;
