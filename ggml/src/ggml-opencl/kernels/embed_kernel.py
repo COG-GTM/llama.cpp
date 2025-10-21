@@ -15,11 +15,11 @@ def main():
 
     input_file = sys.argv[1]
     output_file = sys.argv[2]
-    
+
     if not os.path.isfile(input_file):
         logger.error(f"Input file does not exist: {input_file}")
         sys.exit(1)
-    
+
     ifile = open(input_file, "r")
     ofile = open(output_file, "w")
 
