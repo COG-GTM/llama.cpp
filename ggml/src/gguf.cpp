@@ -649,6 +649,11 @@ struct gguf_context * gguf_init_from_file_impl(FILE * file, struct gguf_init_par
         //   the ggml_tensor structs to the appropriate locations in the binary blob
 
         // compute the exact size needed for the new ggml_context
+        if (n_tensors > SIZE_MAX / ggml_tensor_overhead()) {
+            GGML_LOG_ERROR("%s: n_tensors too large for memory allocation\n", __func__);
+            gguf_free(ctx);
+            return nullptr;
+        }
         const size_t mem_size =
             params.no_alloc ?
             (n_tensors    )*ggml_tensor_overhead() :
