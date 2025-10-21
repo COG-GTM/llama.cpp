@@ -474,8 +474,9 @@ llama_model_loader::llama_model_loader(
         const llama_model_kv_override * param_overrides_p,
         const llama_model_tensor_buft_override * param_tensor_buft_overrides_p) {
     int trace = 0;
-    if (getenv("LLAMA_TRACE")) {
-        trace = atoi(getenv("LLAMA_TRACE"));
+    const char * trace_env = getenv("LLAMA_TRACE");
+    if (trace_env != nullptr) {
+        trace = atoi(trace_env);
     }
 
     if (param_overrides_p != nullptr) {
