@@ -490,6 +490,8 @@ class LlamaBenchDataJSON(LlamaBenchDataSQLite3):
         db_fields = LLAMA_BENCH_DB_FIELDS if tool == "llama-bench" else TEST_BACKEND_OPS_DB_FIELDS
 
         for data_file in data_files:
+            if not os.path.isfile(data_file) or not data_file.endswith('.json'):
+                raise ValueError(f"Invalid JSON file: {data_file}")
             with open(data_file, "r", encoding="utf-8") as fp:
                 parsed = json.load(fp)
 
