@@ -21,6 +21,9 @@ enum handcrafted_file_type {
     HANDCRAFTED_HEADER_BAD_VERSION_FUTURE  =  30,
     HANDCRAFTED_HEADER_BAD_N_TENSORS       =  40,
     HANDCRAFTED_HEADER_BAD_N_KV            =  50,
+    HANDCRAFTED_HEADER_ENDIANNESS_MISMATCH =  60,
+    HANDCRAFTED_HEADER_N_TENSORS_MAX       =  70,
+    HANDCRAFTED_HEADER_N_KV_MAX            =  80,
     HANDCRAFTED_HEADER_EMPTY               = 800,
 
     HANDCRAFTED_KV_BAD_KEY_SIZE            =  10 + offset_has_kv,
@@ -57,6 +60,9 @@ static std::string handcrafted_file_type_name(const enum handcrafted_file_type h
         case HANDCRAFTED_HEADER_BAD_VERSION_FUTURE:  return "HEADER_BAD_VERSION_FUTURE";
         case HANDCRAFTED_HEADER_BAD_N_KV:            return "HEADER_BAD_N_KV";
         case HANDCRAFTED_HEADER_BAD_N_TENSORS:       return "HEADER_BAD_N_TENSORS";
+        case HANDCRAFTED_HEADER_ENDIANNESS_MISMATCH: return "HEADER_ENDIANNESS_MISMATCH";
+        case HANDCRAFTED_HEADER_N_TENSORS_MAX:       return "HEADER_N_TENSORS_MAX";
+        case HANDCRAFTED_HEADER_N_KV_MAX:            return "HEADER_N_KV_MAX";
         case HANDCRAFTED_HEADER_EMPTY:               return "HEADER_EMPTY";
 
         case HANDCRAFTED_KV_BAD_KEY_SIZE:            return "KV_BAD_KEY_SIZE";
@@ -182,6 +188,15 @@ static FILE * get_handcrafted_file(const unsigned int seed, const enum handcraft
     } else if (hft == HANDCRAFTED_HEADER_BAD_VERSION_FUTURE) {
         const uint32_t version = GGUF_VERSION + 1;
         helper_write(file, version);
+    } else if (hft == HANDCRAFTED_HEADER_ENDIANNESS_MISMATCH) {
+        const uint32_t version = GGUF_VERSION;
+        const uint8_t version_bytes[4] = {
+            uint8_t(version >> 24),
+            uint8_t(version >> 16),
+            uint8_t(version >> 8),
+            uint8_t(version)
+        };
+        helper_write(file, version_bytes, 4);
     } else {
         const uint32_t version = GGUF_VERSION;
         helper_write(file, version);
@@ -194,6 +209,9 @@ static FILE * get_handcrafted_file(const unsigned int seed, const enum handcraft
 
     if (hft == HANDCRAFTED_HEADER_BAD_N_TENSORS) {
         const uint64_t n_tensors = -1;
+        helper_write(file, n_tensors);
+    } else if (hft == HANDCRAFTED_HEADER_N_TENSORS_MAX) {
+        const uint64_t n_tensors = SIZE_MAX;
         helper_write(file, n_tensors);
     } else {
         const uint64_t n_tensors = tensor_configs.size();
@@ -213,6 +231,8 @@ static FILE * get_handcrafted_file(const unsigned int seed, const enum handcraft
             n_kv += 1;
         } else if (hft == HANDCRAFTED_HEADER_BAD_N_KV) {
             n_kv = -1;
+        } else if (hft == HANDCRAFTED_HEADER_N_KV_MAX) {
+            n_kv = SIZE_MAX;
         }
         helper_write(file, n_kv);
     }
@@ -670,6 +690,9 @@ static std::pair<int, int> test_handcrafted_file(const unsigned int seed) {
         HANDCRAFTED_HEADER_BAD_VERSION_FUTURE,
         HANDCRAFTED_HEADER_BAD_N_KV,
         HANDCRAFTED_HEADER_BAD_N_TENSORS,
+        HANDCRAFTED_HEADER_ENDIANNESS_MISMATCH,
+        HANDCRAFTED_HEADER_N_TENSORS_MAX,
+        HANDCRAFTED_HEADER_N_KV_MAX,
         HANDCRAFTED_HEADER_EMPTY,
 
         HANDCRAFTED_KV_BAD_KEY_SIZE,
@@ -1292,6 +1315,114 @@ static std::pair<int, int> test_gguf_set_kv(ggml_backend_dev_t dev, const unsign
     return std::make_pair(npass, ntest);
 }
 
+static std::pair<int, int> test_version_compatibility(const unsigned int seed) {
+    printf("%s: testing GGUF version compatibility\n", __func__);
+
+    int npass = 0;
+    int ntest = 0;
+
+    FILE * file_v3 = get_handcrafted_file(seed, HANDCRAFTED_DATA_SUCCESS);
+
+#ifdef _WIN32
+    if (!file_v3) {
+        printf("failed to create tmpfile(), needs elevated privileges on Windows");
+        printf("skipping tests");
+        return std::make_pair(0, 0);
+    }
+#else
+    GGML_ASSERT(file_v3);
+#endif
+
+    struct ggml_context * ctx = nullptr;
+    struct gguf_init_params params = {
+        /*no_alloc =*/ false,
+        /*ctx      =*/ &ctx,
+    };
+    struct gguf_context * gguf_ctx = gguf_init_from_file_impl(file_v3, params);
+
+    printf("%s: read_version_3: ", __func__);
+    if (gguf_ctx && gguf_get_version(gguf_ctx) == GGUF_VERSION) {
+        printf("\033[1;32mOK\033[0m\n");
+        npass++;
+    } else {
+        printf("\033[1;31mFAIL\033[0m\n");
+    }
+    ntest++;
+
+    fclose(file_v3);
+    if (gguf_ctx) {
+        ggml_free(ctx);
+        gguf_free(gguf_ctx);
+    }
+
+    printf("\n");
+    return std::make_pair(npass, ntest);
+}
+
+static std::pair<int, int> test_large_file_handling(ggml_backend_dev_t dev, const unsigned int seed) {
+    (void)seed;
+    ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
+    printf("%s: device=%s, backend=%s\n", __func__, ggml_backend_dev_description(dev), ggml_backend_name(backend));
+
+    int npass = 0;
+    int ntest = 0;
+
+    struct gguf_context * gguf_ctx = gguf_init_empty();
+    for (int i = 0; i < 1000; ++i) {
+        const std::string key = "large_test_key_" + std::to_string(i);
+        gguf_set_val_u32(gguf_ctx, key.c_str(), i);
+    }
+
+    printf("%s: large_kv_count: ", __func__);
+    if (gguf_get_n_kv(gguf_ctx) == 1000) {
+        printf("\033[1;32mOK\033[0m\n");
+        npass++;
+    } else {
+        printf("\033[1;31mFAIL\033[0m\n");
+    }
+    ntest++;
+
+    FILE * file = tmpfile();
+#ifdef _WIN32
+    if (!file) {
+        printf("failed to create tmpfile(), needs elevated privileges on Windows");
+        printf("skipping remaining tests");
+        gguf_free(gguf_ctx);
+        ggml_backend_free(backend);
+        return std::make_pair(npass, ntest);
+    }
+#else
+    GGML_ASSERT(file);
+#endif
+
+    std::vector<int8_t> buf;
+    gguf_write_to_buf(gguf_ctx, buf, false);
+    GGML_ASSERT(fwrite(buf.data(), 1, buf.size(), file) == buf.size());
+    rewind(file);
+
+    struct gguf_init_params params = {/*no_alloc =*/ false, /*ctx =*/ nullptr};
+    struct gguf_context * gguf_ctx_read = gguf_init_from_file_impl(file, params);
+
+    printf("%s: large_kv_roundtrip: ", __func__);
+    if (gguf_ctx_read && gguf_get_n_kv(gguf_ctx_read) == 1000) {
+        printf("\033[1;32mOK\033[0m\n");
+        npass++;
+    } else {
+        printf("\033[1;31mFAIL\033[0m\n");
+    }
+    ntest++;
+
+    fclose(file);
+    gguf_free(gguf_ctx);
+    if (gguf_ctx_read) {
+        gguf_free(gguf_ctx_read);
+    }
+    ggml_backend_free(backend);
+
+    printf("\n");
+    return std::make_pair(npass, ntest);
+}
+
 static void print_usage() {
     printf("usage: test-gguf [seed]\n");
     printf("  if no seed is unspecified then a random seed is used\n");
@@ -1318,6 +1449,12 @@ int main(int argc, char ** argv) {
         ntest += result.second;
     }
 
+    {
+        std::pair<int, int> result = test_version_compatibility(seed);
+        npass += result.first;
+        ntest += result.second;
+    }
+
     for (size_t i = 0; i < ggml_backend_dev_count(); ++i) {
         ggml_backend_dev_t dev = ggml_backend_dev_get(i);
 
@@ -1329,6 +1466,12 @@ int main(int argc, char ** argv) {
 
         {
             std::pair<int, int> result = test_gguf_set_kv(dev, seed);
+            npass += result.first;
+            ntest += result.second;
+        }
+
+        {
+            std::pair<int, int> result = test_large_file_handling(dev, seed);
             npass += result.first;
             ntest += result.second;
         }
