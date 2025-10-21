@@ -668,6 +668,9 @@ bool ggml_gallocr_reserve_n(ggml_gallocr_t galloc, struct ggml_cgraph * graph, c
         GGML_ASSERT(galloc->hash_set.keys != NULL);
 
         free(galloc->hash_values);
+        if (galloc->hash_set.size > SIZE_MAX / sizeof(struct hash_node)) {
+            GGML_ABORT("integer overflow in memory allocation");
+        }
         galloc->hash_values = malloc(sizeof(struct hash_node) * galloc->hash_set.size);
         GGML_ASSERT(galloc->hash_values != NULL);
     }
