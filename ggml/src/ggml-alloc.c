@@ -364,15 +364,34 @@ struct ggml_gallocr {
 };
 
 ggml_gallocr_t ggml_gallocr_new_n(ggml_backend_buffer_type_t * bufts, int n_bufs) {
+    if (n_bufs < 0) {
+        return NULL;
+    }
+    
     ggml_gallocr_t galloc = (ggml_gallocr_t)calloc(1, sizeof(struct ggml_gallocr));
     GGML_ASSERT(galloc != NULL);
 
+    if (n_bufs > 0 && (size_t)n_bufs > SIZE_MAX / sizeof(ggml_backend_buffer_type_t)) {
+        free(galloc);
+        return NULL;
+    }
     galloc->bufts = calloc(n_bufs, sizeof(ggml_backend_buffer_type_t));
     GGML_ASSERT(galloc->bufts != NULL);
 
+    if (n_bufs > 0 && (size_t)n_bufs > SIZE_MAX / sizeof(ggml_backend_buffer_t)) {
+        free(galloc->bufts);
+        free(galloc);
+        return NULL;
+    }
     galloc->buffers = calloc(n_bufs, sizeof(ggml_backend_buffer_t));
     GGML_ASSERT(galloc->buffers != NULL);
 
+    if (n_bufs > 0 && (size_t)n_bufs > SIZE_MAX / sizeof(struct ggml_dyn_tallocr *)) {
+        free(galloc->buffers);
+        free(galloc->bufts);
+        free(galloc);
+        return NULL;
+    }
     galloc->buf_tallocs = calloc(n_bufs, sizeof(struct ggml_dyn_tallocr *));
     GGML_ASSERT(galloc->buf_tallocs != NULL);
 
