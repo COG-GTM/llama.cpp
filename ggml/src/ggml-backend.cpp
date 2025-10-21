@@ -1609,8 +1609,25 @@ ggml_backend_sched_t ggml_backend_sched_new(
     // initialize hash table
     // FIXME: needs to be size*2 to account for leafs (do it in graph_split instead)
     sched->hash_set    = ggml_hash_set_new(graph_size);
+    
+    if (sched->hash_set.size > SIZE_MAX / sizeof(sched->hv_tensor_backend_ids[0])) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
     sched->hv_tensor_backend_ids = (int *) malloc(sched->hash_set.size * sizeof(sched->hv_tensor_backend_ids[0]));
-    sched->hv_tensor_copies      = (ggml_tensor **) malloc(sched->hash_set.size * sched->n_backends * sched->n_copies * sizeof(struct ggml_tensor *));
+    
+    size_t tensor_copies_size = sched->hash_set.size;
+    if (tensor_copies_size > SIZE_MAX / sched->n_backends) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    tensor_copies_size *= sched->n_backends;
+    if (tensor_copies_size > SIZE_MAX / sched->n_copies) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    tensor_copies_size *= sched->n_copies;
+    if (tensor_copies_size > SIZE_MAX / sizeof(struct ggml_tensor *)) {
+        GGML_ABORT("integer overflow in memory allocation");
+    }
+    sched->hv_tensor_copies      = (ggml_tensor **) malloc(tensor_copies_size * sizeof(struct ggml_tensor *));
 
     const size_t ggml_sched_max_splits = graph_size; // at most there is one split for each node in the graph
     const size_t nodes_size = graph_size + ggml_sched_max_splits*GGML_SCHED_MAX_SPLIT_INPUTS*2;
