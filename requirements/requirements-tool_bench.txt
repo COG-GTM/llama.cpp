@@ -10,3 +10,4 @@ requests~=2.32.3
 wget~=3.2
 typer~=0.15.1
 seaborn~=0.13.2
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
