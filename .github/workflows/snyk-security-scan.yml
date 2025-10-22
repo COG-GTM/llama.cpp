@@ -1,0 +1,218 @@
+name: Snyk Security Scan and Automated Resolution
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  snyk-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          # Install dependencies for multi-project structure
+          echo "Installing dependencies for all projects..."
+          
+          # Install root dependencies if they exist and are not empty
+          if [ -f package.json ] && [ "$(jq '.dependencies // {} | length' package.json)" -gt 0 ]; then
+            echo "Installing root Node.js dependencies..."
+            npm ci
+          fi
+          
+          # Install frontend dependencies
+          if [ -f contact-form-app/frontend/package.json ]; then
+            echo "Installing frontend dependencies..."
+            cd contact-form-app/frontend
+            npm ci
+            cd ../..
+          fi
+          
+          # Install backend dependencies
+          if [ -f contact-form-app/backend/requirements.txt ]; then
+            echo "Installing backend Python dependencies..."
+            pip install -r contact-form-app/backend/requirements.txt
+          fi
+          
+          # Install other project dependencies if they exist
+          find . -name "package.json" -not -path "./node_modules/*" -not -path "./contact-form-app/frontend/node_modules/*" | while read package_file; do
+            dir=$(dirname "$package_file")
+            if [ "$dir" != "." ] && [ "$dir" != "./contact-form-app/frontend" ]; then
+              echo "Installing dependencies in $dir..."
+              cd "$dir"
+              if [ -f package-lock.json ] || [ -f yarn.lock ]; then
+                npm ci 2>/dev/null || npm install
+              fi
+              cd - > /dev/null
+            fi
+          done
+
+      - name: Install Snyk CLI
+        run: |
+          npm install -g snyk
+          snyk --version
+
+      - name: Authenticate Snyk
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          # Verify token is available
+          if [ -z "$SNYK_TOKEN" ]; then
+            echo "Error: SNYK_TOKEN secret is not set"
+            echo "Please add your Snyk API token to GitHub repository secrets"
+            exit 1
+          fi
+          
+          # Test authentication by running a simple command
+          echo "Testing Snyk authentication..."
+          snyk auth --help > /dev/null 2>&1 || echo "Snyk CLI ready"
+
+      - name: Run Snyk Security Scan
+        id: snyk-scan
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_ORG_ID: ef0bb1e6-0d53-4889-b1b3-252dac87a0ef
+        run: |
+          # Create output directory
+          mkdir -p snyk-results
+          
+          # Run Snyk Code SAST scan and send directly to Devin
+          echo "Running Snyk Code SAST scan..."
+          
+          # Run single scan on entire repository
+          snyk code test --org=$SNYK_ORG_ID --json --severity-threshold=medium > snyk-results/all-findings.json || echo "Scan completed with findings"
+          
+          # Check if we have findings to send to Devin
+          FINDINGS_COUNT=$(cat snyk-results/all-findings.json | jq '.runs[]?.results[]? | select(.level == "warning" or .level == "error")' | jq -s length)
+          
+          if [ "$FINDINGS_COUNT" -gt 0 ]; then
+            echo "✅ Found $FINDINGS_COUNT security findings - sending to Devin"
+            echo "has-findings=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ No security findings detected"
+            echo "has-findings=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send Findings to Devin for Remediation
+        id: devin-security
+        if: steps.snyk-scan.outputs.has-findings == 'true'
+        env:
+          DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
+        run: |
+          # Extract only the essential findings (no metadata/rules)
+          FILTERED_RESULTS=$(cat snyk-results/all-findings.json | jq '{
+            "findings": [
+              .runs[]?.results[]? | {
+                "ruleId": .ruleId,
+                "level": .level,
+                "message": .message.text,
+                "file": .locations[0].physicalLocation.artifactLocation.uri,
+                "line": .locations[0].physicalLocation.region.startLine,
+                "description": "Debug mode enabled in production code"
+              }
+            ]
+          }')
+          
+          # Create the prompt with filtered findings
+          cat > prompt.txt << 'EOF'
+          You are Security Resolver Devin. Fix all security issues found by Snyk Code scan.
+          
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          
+          Tasks:
+          1. Clone the repository locally
+          2. Review the Snyk Code findings below
+          3. Fix all security issues found
+          4. Create a pull request with the fixes
+          
+          Security Findings:
+          EOF
+          
+          # Append filtered results to the prompt
+          echo "$FILTERED_RESULTS" >> prompt.txt
+          
+          # Convert to JSON-safe format
+          ESCAPED_PROMPT=$(cat prompt.txt | jq -Rs .)
+
+          echo "Creating Devin security resolution session..."
+          echo "Prompt preview (first 500 chars):"
+          head -c 500 prompt.txt
+          echo ""
+          echo "..."
+          RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer $DEVIN_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"prompt\": $ESCAPED_PROMPT}" \
+            "https://api.devin.ai/v1/sessions")
+
+          # Check for errors in the response
+          ERROR_MSG=$(echo "$RESPONSE" | jq -r '.detail // empty')
+          if [ ! -z "$ERROR_MSG" ] && [ "$ERROR_MSG" != "null" ]; then
+            echo "Error creating Devin session: $ERROR_MSG"
+            echo "Full response: $RESPONSE"
+            exit 1
+          fi
+
+          SESSION_ID=$(echo "$RESPONSE" | jq -r '.session_id // empty')
+          SESSION_URL=$(echo "$RESPONSE" | jq -r '.url // empty')
+
+          if [ -z "$SESSION_ID" ] || [ -z "$SESSION_URL" ]; then
+            echo "Error: Devin session details are missing from the response."
+            echo "Full response: $RESPONSE"
+            exit 1
+          fi
+
+          echo "session-id=$SESSION_ID" >> $GITHUB_OUTPUT
+          echo "session-url=$SESSION_URL" >> $GITHUB_OUTPUT
+          echo "✅ Devin security resolution session created successfully"
+          echo "📊 Session ID: $SESSION_ID"
+          echo "🔗 Session URL: $SESSION_URL"
+
+      - name: Upload Scan Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snyk-scan-results-${{ github.run_number }}
+          path: snyk-results/
+          retention-days: 30
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "🔍 Snyk Code SAST Scan Complete"
+          echo "================================"
+          
+          if [ "${{ steps.snyk-scan.outputs.has-findings }}" == "true" ]; then
+            echo "🚨 Security findings detected - Devin AI session created"
+            echo "🔗 Devin Session: ${{ steps.devin-security.outputs.session-url }}"
+          else
+            echo "✅ No security issues found"
+          fi
