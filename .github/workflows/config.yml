@@ -1,0 +1,41 @@
+name: YAML Config Tests
+
+on:
+  push:
+    branches: [ "master", "devin/*" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  test-yaml-config:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Dependencies
+      id: depends
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake git-lfs
+        git lfs install
+
+    - name: Download tiny model (stories15M)
+      run: |
+        mkdir -p models
+        # Download only the specific model file we need (19MB) to avoid disk space issues
+        wget -q "https://huggingface.co/ggml-org/models/resolve/main/tinyllamas/stories15M-q4_0.gguf" -O models/stories15M-q4_0.gguf
+        ls -lh models/stories15M-q4_0.gguf
+
+    - name: Build
+      id: cmake_build
+      run: |
+        cmake -B build -DLLAMA_BUILD_TESTS=ON -DLLAMA_BUILD_TOOLS=ON -DLLAMA_FATAL_WARNINGS=ON -DLLAMA_CURL=OFF
+        cmake --build build --config Release -j $(nproc)
+
+    - name: Test YAML config functionality
+      run: |
+        cd build
+        ctest -R "test-config-yaml|test-config-yaml-cli-.*|test-config-yaml-parity" --output-on-failure --timeout 300
