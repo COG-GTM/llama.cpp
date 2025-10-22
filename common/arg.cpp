@@ -19,6 +19,10 @@
 #define JSON_ASSERT GGML_ASSERT
 #include <nlohmann/json.hpp>
 
+#ifdef LLAMA_YAML_CONFIG
+#include <yaml-cpp/yaml.h>
+#endif
+
 #include <algorithm>
 #include <climits>
 #include <cstdarg>
@@ -1659,6 +1663,208 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
     return true;
 }
 
+#ifdef LLAMA_YAML_CONFIG
+bool common_params_load_yaml_config(const std::string & config_path, common_params & params) {
+    try {
+        YAML::Node config = YAML::LoadFile(config_path);
+        
+        std::filesystem::path config_dir = std::filesystem::path(config_path).parent_path();
+        
+        std::vector<std::string> valid_keys = common_params_get_valid_yaml_keys();
+        std::set<std::string> valid_keys_set(valid_keys.begin(), valid_keys.end());
+        
+        for (const auto& kv : config) {
+            std::string key = kv.first.as<std::string>();
+            
+            if (valid_keys_set.find(key) == valid_keys_set.end()) {
+                std::ostringstream oss;
+                oss << "Unknown YAML key: '" << key << "'\n";
+                oss << "Valid keys are: ";
+                for (size_t i = 0; i < valid_keys.size(); ++i) {
+                    oss << valid_keys[i];
+                    if (i < valid_keys.size() - 1) oss << ", ";
+                }
+                throw std::runtime_error(oss.str());
+            }
+            
+            YAML::Node value = kv.second;
+            
+            if (key == "model" || key == "m") {
+                std::string model_path = value.as<std::string>();
+                if (!model_path.empty() && model_path[0] != '/') {
+                    model_path = (config_dir / model_path).string();
+                }
+                params.model.path = model_path;
+            } else if (key == "threads" || key == "t") {
+                params.cpuparams.n_threads = value.as<int>();
+                if (params.cpuparams.n_threads <= 0) {
+                    params.cpuparams.n_threads = std::thread::hardware_concurrency();
+                }
+            } else if (key == "threads-batch" || key == "tb") {
+                params.cpuparams_batch.n_threads = value.as<int>();
+                if (params.cpuparams_batch.n_threads <= 0) {
+                    params.cpuparams_batch.n_threads = std::thread::hardware_concurrency();
+                }
+            } else if (key == "ctx-size" || key == "c") {
+                params.n_ctx = value.as<int>();
+            } else if (key == "batch-size" || key == "b") {
+                params.n_batch = value.as<int>();
+            } else if (key == "ubatch-size" || key == "ub") {
+                params.n_ubatch = value.as<int>();
+            } else if (key == "predict" || key == "n") {
+                params.n_predict = value.as<int>();
+            } else if (key == "keep") {
+                params.n_keep = value.as<int>();
+            } else if (key == "seed" || key == "s") {
+                params.sampling.seed = value.as<uint32_t>();
+            } else if (key == "temp") {
+                params.sampling.temp = value.as<float>();
+                params.sampling.temp = std::max(params.sampling.temp, 0.0f);
+            } else if (key == "top-k") {
+                params.sampling.top_k = value.as<int>();
+            } else if (key == "top-p") {
+                params.sampling.top_p = value.as<float>();
+            } else if (key == "min-p") {
+                params.sampling.min_p = value.as<float>();
+            } else if (key == "prompt" || key == "p") {
+                params.prompt = value.as<std::string>();
+            } else if (key == "file" || key == "f") {
+                std::string file_path = value.as<std::string>();
+                if (!file_path.empty() && file_path[0] != '/') {
+                    file_path = (config_dir / file_path).string();
+                }
+                params.prompt = read_file(file_path);
+                params.prompt_file = file_path;
+                if (!params.prompt.empty() && params.prompt.back() == '\n') {
+                    params.prompt.pop_back();
+                }
+            } else if (key == "system-prompt" || key == "sys") {
+                params.system_prompt = value.as<std::string>();
+            } else if (key == "system-prompt-file" || key == "sysf") {
+                std::string file_path = value.as<std::string>();
+                if (!file_path.empty() && file_path[0] != '/') {
+                    file_path = (config_dir / file_path).string();
+                }
+                params.system_prompt = read_file(file_path);
+                if (!params.system_prompt.empty() && params.system_prompt.back() == '\n') {
+                    params.system_prompt.pop_back();
+                }
+            } else if (key == "escape" || key == "e") {
+                params.escape = value.as<bool>();
+            } else if (key == "interactive" || key == "i") {
+                params.interactive = value.as<bool>();
+            } else if (key == "interactive-first" || key == "if") {
+                params.interactive_first = value.as<bool>();
+            } else if (key == "multiline-input" || key == "mli") {
+                params.multiline_input = value.as<bool>();
+            } else if (key == "color" || key == "co") {
+                params.use_color = value.as<bool>();
+            } else if (key == "verbose-prompt") {
+                params.verbose_prompt = value.as<bool>();
+            } else if (key == "no-display-prompt") {
+                params.display_prompt = !value.as<bool>();
+            } else if (key == "conversation" || key == "cnv") {
+                if (value.as<bool>()) {
+                    params.conversation_mode = COMMON_CONVERSATION_MODE_ENABLED;
+                }
+            } else if (key == "no-conversation" || key == "no-cnv") {
+                if (value.as<bool>()) {
+                    params.conversation_mode = COMMON_CONVERSATION_MODE_DISABLED;
+                }
+            } else if (key == "single-turn" || key == "st") {
+                params.single_turn = value.as<bool>();
+            } else if (key == "special" || key == "sp") {
+                params.special = value.as<bool>();
+            } else if (key == "flash-attn" || key == "fa") {
+                std::string fa_value = value.as<std::string>();
+                if (fa_value == "on" || fa_value == "enabled" || fa_value == "1") {
+                    params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+                } else if (fa_value == "off" || fa_value == "disabled" || fa_value == "0") {
+                    params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_DISABLED;
+                } else if (fa_value == "auto" || fa_value == "-1") {
+                    params.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO;
+                }
+            } else if (key == "no-perf") {
+                if (value.as<bool>()) {
+                    params.no_perf = true;
+                    params.sampling.no_perf = true;
+                }
+            } else if (key == "ignore-eos") {
+                params.sampling.ignore_eos = value.as<bool>();
+            } else if (key == "no-warmup") {
+                params.warmup = !value.as<bool>();
+            } else if (key == "spm-infill") {
+                params.spm_infill = value.as<bool>();
+            } else if (key == "samplers") {
+                std::string samplers_str = value.as<std::string>();
+                const auto sampler_names = string_split<std::string>(samplers_str, ';');
+                params.sampling.samplers = common_sampler_types_from_names(sampler_names, true);
+            } else if (key == "sampling-seq" || key == "sampler-seq") {
+                std::string seq = value.as<std::string>();
+                params.sampling.samplers = common_sampler_types_from_chars(seq);
+            }
+        }
+        
+        return true;
+    } catch (const YAML::Exception& e) {
+        fprintf(stderr, "YAML parsing error: %s\n", e.what());
+        return false;
+    } catch (const std::exception& e) {
+        fprintf(stderr, "Error loading YAML config: %s\n", e.what());
+        return false;
+    }
+}
+
+std::vector<std::string> common_params_get_valid_yaml_keys() {
+    return {
+        "model", "m",
+        "threads", "t", 
+        "threads-batch", "tb",
+        "ctx-size", "c",
+        "batch-size", "b",
+        "ubatch-size", "ub", 
+        "predict", "n",
+        "keep",
+        "seed", "s",
+        "temp",
+        "top-k",
+        "top-p", 
+        "min-p",
+        "prompt", "p",
+        "file", "f",
+        "system-prompt", "sys",
+        "system-prompt-file", "sysf",
+        "escape", "e",
+        "interactive", "i",
+        "interactive-first", "if",
+        "multiline-input", "mli",
+        "color", "co",
+        "verbose-prompt",
+        "no-display-prompt",
+        "conversation", "cnv",
+        "no-conversation", "no-cnv",
+        "single-turn", "st",
+        "special", "sp",
+        "flash-attn", "fa",
+        "no-perf",
+        "ignore-eos",
+        "no-warmup",
+        "spm-infill",
+        "samplers",
+        "sampling-seq", "sampler-seq"
+    };
+}
+#else
+bool common_params_load_yaml_config(const std::string & config_path, common_params & params) {
+    fprintf(stderr, "YAML config support not available (yaml-cpp not found during build)\n");
+    return false;
+}
+
+std::vector<std::string> common_params_get_valid_yaml_keys() {
+    return {};
+}
+#endif
+
 static std::string list_builtin_chat_templates() {
     std::vector<const char *> supported_tmpl;
     int32_t res = llama_chat_builtin_templates(nullptr, 0);
@@ -1714,6 +1920,15 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
     };
 
 
+    add_opt(common_arg(
+        {"--config"}, "FNAME",
+        "path to YAML config file",
+        [](common_params & params, const std::string & value) {
+            if (!common_params_load_yaml_config(value, params)) {
+                throw std::runtime_error("Failed to load YAML config file: " + value);
+            }
+        }
+    ));
     add_opt(common_arg(
         {"-h", "--help", "--usage"},
         "print usage and exit",
