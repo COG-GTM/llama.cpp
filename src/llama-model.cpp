@@ -20290,6 +20290,7 @@ llama_rope_type llama_model_rope_type(const llama_model * model) {
         case LLM_ARCH_RWKV7:
         case LLM_ARCH_ARWKV7:
         case LLM_ARCH_WAVTOKENIZER_DEC:
+        case LLM_ARCH_SNAC_DEC:
         case LLM_ARCH_NEMOTRON_H:
             return LLAMA_ROPE_TYPE_NONE;
 
