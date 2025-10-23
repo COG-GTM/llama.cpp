@@ -107,16 +107,16 @@ jobs:
           echo "Running Snyk Code SAST scan..."
           
           # Run single scan on entire repository
-          snyk code test --org=$SNYK_ORG_ID --json --severity-threshold=medium > snyk-results/all-findings.json || echo "Scan completed with findings"
+          snyk code test --org=$SNYK_ORG_ID --json --severity-threshold=high > snyk-results/all-findings.json || echo "Scan completed with findings"
           
           # Check if we have findings to send to Devin
-          FINDINGS_COUNT=$(cat snyk-results/all-findings.json | jq '.runs[]?.results[]? | select(.level == "warning" or .level == "error")' | jq -s length)
+          FINDINGS_COUNT=$(cat snyk-results/all-findings.json | jq '.runs[]?.results[]? | select(.level == "error")' | jq -s length)
           
           if [ "$FINDINGS_COUNT" -gt 0 ]; then
-            echo "✅ Found $FINDINGS_COUNT security findings - sending to Devin"
+            echo "✅ Found $FINDINGS_COUNT high-severity security findings - sending to Devin"
             echo "has-findings=true" >> $GITHUB_OUTPUT
           else
-            echo "✅ No security findings detected"
+            echo "✅ No high-severity security findings detected"
             echo "has-findings=false" >> $GITHUB_OUTPUT
           fi
 
@@ -126,43 +126,76 @@ jobs:
         env:
           DEVIN_API_KEY: ${{ secrets.DEVIN_API_KEY }}
         run: |
-          # Extract only the essential findings (no metadata/rules)
+          # Extract only high-severity findings with minimal details
           FILTERED_RESULTS=$(cat snyk-results/all-findings.json | jq '{
             "findings": [
-              .runs[]?.results[]? | {
+              .runs[]?.results[]? | select(.level == "error") | {
                 "ruleId": .ruleId,
-                "level": .level,
                 "message": .message.text,
                 "file": .locations[0].physicalLocation.artifactLocation.uri,
-                "line": .locations[0].physicalLocation.region.startLine,
-                "description": "Debug mode enabled in production code"
+                "line": .locations[0].physicalLocation.region.startLine
               }
             ]
-          }')
+          }' | jq '.findings |= .[0:20]')
           
           # Create the prompt with filtered findings
           cat > prompt.txt << 'EOF'
-          You are Security Resolver Devin. Fix all security issues found by Snyk Code scan.
+          You are Security Resolver Devin. Fix the high-severity security issues found by Snyk Code scan.
           
           Repository: ${{ github.repository }}
           Branch: ${{ github.ref_name }}
           
           Tasks:
           1. Clone the repository locally
-          2. Review the Snyk Code findings below
+          2. Review the Snyk Code findings below (limited to top 20 high-severity issues)
           3. Fix all security issues found
           4. Create a pull request with the fixes
           
-          Security Findings:
+          Security Findings (High Severity):
           EOF
           
           # Append filtered results to the prompt
           echo "$FILTERED_RESULTS" >> prompt.txt
           
+          # Check prompt length and truncate if needed
+          PROMPT_LENGTH=$(wc -c < prompt.txt)
+          if [ "$PROMPT_LENGTH" -gt 28000 ]; then
+            echo "Warning: Prompt too long ($PROMPT_LENGTH chars), truncating findings..."
+            # Recreate with fewer findings
+            FILTERED_RESULTS=$(cat snyk-results/all-findings.json | jq '{
+              "findings": [
+                .runs[]?.results[]? | select(.level == "error") | {
+                  "ruleId": .ruleId,
+                  "file": .locations[0].physicalLocation.artifactLocation.uri,
+                  "line": .locations[0].physicalLocation.region.startLine
+                }
+              ]
+            }' | jq '.findings |= .[0:10]')
+            
+            cat > prompt.txt << 'EOF'
+          You are Security Resolver Devin. Fix the high-severity security issues found by Snyk Code scan.
+          
+          Repository: ${{ github.repository }}
+          Branch: ${{ github.ref_name }}
+          
+          Tasks:
+          1. Clone the repository locally
+          2. Review the Snyk Code findings below (limited to top 10 high-severity issues due to size constraints)
+          3. Fix all security issues found
+          4. Create a pull request with the fixes
+          
+          Note: Full scan results are available in the workflow artifacts.
+          
+          Security Findings (High Severity - Top 10):
+          EOF
+            echo "$FILTERED_RESULTS" >> prompt.txt
+          fi
+          
           # Convert to JSON-safe format
           ESCAPED_PROMPT=$(cat prompt.txt | jq -Rs .)
 
           echo "Creating Devin security resolution session..."
+          echo "Prompt length: $(wc -c < prompt.txt) characters"
           echo "Prompt preview (first 500 chars):"
           head -c 500 prompt.txt
           echo ""
@@ -214,5 +247,5 @@ jobs:
             echo "🚨 Security findings detected - Devin AI session created"
             echo "🔗 Devin Session: ${{ steps.devin-security.outputs.session-url }}"
           else
-            echo "✅ No security issues found"
+            echo "✅ No high-severity security issues found"
           fi
