@@ -53,13 +53,13 @@ struct DownloadButton: View {
                         print("Security Error: Temporary file path is outside expected directory")
                         return
                     }
-                    
+
                     let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
                     guard fileURL.path.hasPrefix(docsDir.path) else {
                         print("Security Error: Destination path is outside documents directory")
                         return
                     }
-                    
+
                     try FileManager.default.copyItem(at: temporaryURL, to: fileURL)
                     print("Writing to \(filename) completed")
 
