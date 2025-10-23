@@ -40,7 +40,7 @@ export const SETTING_CONFIG_DEFAULT: Record<string, string | number | boolean> =
 };
 
 export const SETTING_CONFIG_INFO: Record<string, string> = {
-	apiKey: 'Set the API Key if you are using --api-key option for the server.',
+	apiKey: 'Configure the API Key for authentication. Never hardcode API keys in source code - use environment variables or secure configuration management instead.',
 	systemMessage: 'The starting message that defines how model should behave.',
 	theme:
 		'Choose the color theme for the interface. You can choose between System (follows your device settings), Light, or Dark.',
