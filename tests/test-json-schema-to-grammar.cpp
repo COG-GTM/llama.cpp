@@ -1320,7 +1320,7 @@ int main() {
     if (getenv("LLAMA_SKIP_TESTS_SLOW_ON_EMULATOR")) {
         fprintf(stderr, "\033[33mWARNING: Skipping slow tests on emulator.\n\033[0m");
     } else {
-        if (getenv("LLAMA_PYTHON_AVAILABLE") || (std::system("python -c \"import sys; exit(1) if sys.version_info < (3, 8) else print('Python version is sufficient')\"") == 0)) {
+        if (getenv("LLAMA_PYTHON_AVAILABLE") || (std::system("python -c \"import sys; exit(1) if sys.version_info < (3, 12) else print('Python version is sufficient')\"") == 0)) {
             test_all("Python", [](const TestCase & tc) {
                 write("test-json-schema-input.tmp", tc.schema);
                 tc.verify_status(std::system(
@@ -1328,7 +1328,7 @@ int main() {
                 tc.verify(read("test-grammar-output.tmp"));
             });
         } else {
-            fprintf(stderr, "\033[33mWARNING: Python not found (min version required is 3.8), skipping Python JSON schema -> grammar tests.\n\033[0m");
+            fprintf(stderr, "\033[33mWARNING: Python not found (min version required is 3.12), skipping Python JSON schema -> grammar tests.\n\033[0m");
         }
 
         if (getenv("LLAMA_NODE_AVAILABLE") || (std::system("node --version") == 0)) {
