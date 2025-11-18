@@ -6,6 +6,13 @@ llama_add_compile_flags()
 
 # llama
 
+# Collect modular architecture sources
+file(GLOB ARCH_SOURCES "llama-model/architectures/*.cpp")
+file(GLOB LOADER_SOURCES "llama-model/loading/*.cpp")
+file(GLOB MEMORY_SOURCES "llama-model/memory/*.cpp")
+file(GLOB BASE_SOURCES "llama-model/base/*.cpp")
+file(GLOB REGISTRY_SOURCES "llama-model/registry/*.cpp")
+
 add_library(llama
             ../include/llama.h
             llama.cpp
@@ -35,6 +42,11 @@ add_library(llama
             unicode-data.cpp
             unicode.cpp
             unicode.h
+            ${ARCH_SOURCES}
+            ${LOADER_SOURCES}
+            ${MEMORY_SOURCES}
+            ${BASE_SOURCES}
+            ${REGISTRY_SOURCES}
             )
 
 target_include_directories(llama PRIVATE .)
