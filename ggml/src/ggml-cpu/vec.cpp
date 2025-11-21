@@ -432,8 +432,15 @@ ggml_float ggml_vec_cvar_f32(const int n, float * y, const float * x, const floa
                                 _mm_set1_ps(mean));
         _mm_storeu_ps(y + i, val);
         val = _mm_mul_ps(val, val);
+#if defined(__AVX__) || defined(__AVX2__) || defined(__AVX512F__)
         val = _mm_add_ps(val, _mm_movehl_ps(val, val));
         val = _mm_add_ss(val, _mm_movehdup_ps(val));
+#else
+        __m128 tmp = _mm_shuffle_ps(val, val, _MM_SHUFFLE(2, 3, 0, 1));
+        val = _mm_add_ps(val, tmp);
+        tmp = _mm_movehl_ps(tmp, val);
+        val = _mm_add_ss(val, tmp);
+#endif  // __AVX__ || __AVX2__ || __AVX512F__
         sum += (ggml_float)_mm_cvtss_f32(val);
     }
 #elif defined(__AVX2__) && defined(__FMA__)
