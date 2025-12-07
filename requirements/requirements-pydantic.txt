@@ -1,3 +1,4 @@
 docstring_parser~=0.15
 pydantic~=2.11.7
 requests
+urllib3>=2.6.0 # not directly required, pinned by Snyk to avoid a vulnerability
