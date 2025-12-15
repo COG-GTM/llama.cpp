@@ -527,6 +527,17 @@ std::string string_repeat(const std::string & str, size_t n) {
     return result;
 }
 
+// Truncate a string to a maximum length, adding ellipsis if truncated
+std::string string_truncate(const std::string & str, size_t max_len) {
+    if (str.length() <= max_len) {
+        return str;
+    }
+    if (max_len < 3) {
+        return str.substr(0, max_len);
+    }
+    return str.substr(0, max_len - 3) + "...";
+}
+
 std::string string_from(bool value) {
     return value ? "true" : "false";
 }
