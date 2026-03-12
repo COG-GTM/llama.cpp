@@ -1,0 +1,32 @@
+# See spec at https://docs.devin.ai/onboard-devin/repo-setup
+initialize: |
+  # Install build tools and dependencies for llama.cpp (C/C++ project using CMake)
+  sudo apt-get update -qq
+  sudo apt-get install -y -qq cmake ccache libcurl4-openssl-dev
+  pip install pre-commit
+maintenance: |
+  # Set up pre-commit hooks and build the project
+  pre-commit install
+  cmake -B build
+  cmake --build build --config Release -j $(nproc)
+knowledge:
+  - name: lint
+    contents: |
+      # Pre-commit hooks handle linting (trailing whitespace, end-of-file, yaml check, flake8)
+      pre-commit run --all-files
+  - name: test
+    contents: |
+      # Run the test suite via CTest
+      cd build && ctest --output-on-failure
+  - name: build
+    contents: |
+      # CPU build (default, no GPU)
+      cmake -B build
+      cmake --build build --config Release -j $(nproc)
+      # Binaries are output to build/bin/
+  - name: startup
+    contents: |
+      # Run the CLI (requires a GGUF model file)
+      ./build/bin/llama-cli -m <model.gguf>
+      # Or launch the OpenAI-compatible API server
+      ./build/bin/llama-server -m <model.gguf>
