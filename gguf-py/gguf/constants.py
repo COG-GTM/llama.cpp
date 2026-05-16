@@ -400,6 +400,7 @@ class MODEL_ARCH(IntEnum):
     GRANITE_HYBRID   = auto()
     CHAMELEON        = auto()
     WAVTOKENIZER_DEC = auto()
+    SNAC_DEC         = auto()
     PLM              = auto()
     BAILINGMOE       = auto()
     BAILINGMOE2      = auto()
@@ -600,6 +601,33 @@ class MODEL_TENSOR(IntEnum):
     SHORTCONV_CONV       = auto()
     SHORTCONV_INPROJ     = auto()
     SHORTCONV_OUTPROJ    = auto()
+    SNAC_ENC_CONV_IN          = auto()
+    SNAC_ENC_BLK_CONV1        = auto()
+    SNAC_ENC_BLK_CONV2        = auto()
+    SNAC_ENC_BLK_CONV3        = auto()
+    SNAC_ENC_BLK_CONV_DS      = auto()
+    SNAC_ENC_BLK_SNAKE_ALPHA  = auto()
+    SNAC_ENC_CONV_OUT         = auto()
+    SNAC_ENC_ATTN_NORM        = auto()
+    SNAC_ENC_ATTN_Q           = auto()
+    SNAC_ENC_ATTN_K           = auto()
+    SNAC_ENC_ATTN_V           = auto()
+    SNAC_ENC_ATTN_OUT         = auto()
+    SNAC_VQ_IN_PROJ           = auto()
+    SNAC_VQ_OUT_PROJ          = auto()
+    SNAC_VQ_CODEBOOK          = auto()
+    SNAC_DEC_CONV_IN          = auto()
+    SNAC_DEC_ATTN_NORM        = auto()
+    SNAC_DEC_ATTN_Q           = auto()
+    SNAC_DEC_ATTN_K           = auto()
+    SNAC_DEC_ATTN_V           = auto()
+    SNAC_DEC_ATTN_OUT         = auto()
+    SNAC_DEC_BLK_CONV_UP      = auto()
+    SNAC_DEC_BLK_CONV1        = auto()
+    SNAC_DEC_BLK_CONV2        = auto()
+    SNAC_DEC_BLK_CONV3        = auto()
+    SNAC_DEC_BLK_SNAKE_ALPHA  = auto()
+    SNAC_DEC_CONV_OUT         = auto()
     # vision
     V_MMPROJ             = auto()
     V_MMPROJ_FC          = auto()
@@ -745,6 +773,7 @@ MODEL_ARCH_NAMES: dict[MODEL_ARCH, str] = {
     MODEL_ARCH.GRANITE_HYBRID:   "granitehybrid",
     MODEL_ARCH.CHAMELEON:        "chameleon",
     MODEL_ARCH.WAVTOKENIZER_DEC: "wavtokenizer-dec",
+    MODEL_ARCH.SNAC_DEC:         "snac-dec",
     MODEL_ARCH.PLM:              "plm",
     MODEL_ARCH.BAILINGMOE:       "bailingmoe",
     MODEL_ARCH.BAILINGMOE2:      "bailingmoe2",
@@ -946,6 +975,21 @@ TENSOR_NAMES: dict[MODEL_TENSOR, str] = {
     MODEL_TENSOR.SHORTCONV_CONV:            "blk.{bid}.shortconv.conv",
     MODEL_TENSOR.SHORTCONV_INPROJ:          "blk.{bid}.shortconv.in_proj",
     MODEL_TENSOR.SHORTCONV_OUTPROJ:         "blk.{bid}.shortconv.out_proj",
+    MODEL_TENSOR.SNAC_DEC_CONV_IN:          "decoder.conv_in",
+    MODEL_TENSOR.SNAC_DEC_ATTN_NORM:        "decoder.attn_norm",
+    MODEL_TENSOR.SNAC_DEC_ATTN_Q:           "decoder.attn_q",
+    MODEL_TENSOR.SNAC_DEC_ATTN_K:           "decoder.attn_k",
+    MODEL_TENSOR.SNAC_DEC_ATTN_V:           "decoder.attn_v",
+    MODEL_TENSOR.SNAC_DEC_ATTN_OUT:         "decoder.attn_out",
+    MODEL_TENSOR.SNAC_DEC_BLK_CONV_UP:      "decoder.block.{bid}.conv_up",
+    MODEL_TENSOR.SNAC_DEC_BLK_CONV1:        "decoder.block.{bid}.conv1",
+    MODEL_TENSOR.SNAC_DEC_BLK_CONV2:        "decoder.block.{bid}.conv2",
+    MODEL_TENSOR.SNAC_DEC_BLK_CONV3:        "decoder.block.{bid}.conv3",
+    MODEL_TENSOR.SNAC_DEC_BLK_SNAKE_ALPHA:  "decoder.block.{bid}.snake_alpha",
+    MODEL_TENSOR.SNAC_DEC_CONV_OUT:         "decoder.conv_out",
+    MODEL_TENSOR.SNAC_VQ_IN_PROJ:           "quantizer.{bid}.in_proj",
+    MODEL_TENSOR.SNAC_VQ_OUT_PROJ:          "quantizer.{bid}.out_proj",
+    MODEL_TENSOR.SNAC_VQ_CODEBOOK:          "quantizer.{bid}.codebook",
     # vision
     MODEL_TENSOR.V_MMPROJ:                  "mm.{bid}",
     MODEL_TENSOR.V_MMPROJ_FC:               "mm.model.fc",
@@ -2517,6 +2561,23 @@ MODEL_TENSORS: dict[MODEL_ARCH, list[MODEL_TENSOR]] = {
         MODEL_TENSOR.POSNET_ATTN_K,
         MODEL_TENSOR.POSNET_ATTN_V,
         MODEL_TENSOR.POSNET_ATTN_OUT,
+    ],
+    MODEL_ARCH.SNAC_DEC: [
+        MODEL_TENSOR.SNAC_DEC_CONV_IN,
+        MODEL_TENSOR.SNAC_DEC_ATTN_NORM,
+        MODEL_TENSOR.SNAC_DEC_ATTN_Q,
+        MODEL_TENSOR.SNAC_DEC_ATTN_K,
+        MODEL_TENSOR.SNAC_DEC_ATTN_V,
+        MODEL_TENSOR.SNAC_DEC_ATTN_OUT,
+        MODEL_TENSOR.SNAC_DEC_BLK_CONV_UP,
+        MODEL_TENSOR.SNAC_DEC_BLK_CONV1,
+        MODEL_TENSOR.SNAC_DEC_BLK_CONV2,
+        MODEL_TENSOR.SNAC_DEC_BLK_CONV3,
+        MODEL_TENSOR.SNAC_DEC_BLK_SNAKE_ALPHA,
+        MODEL_TENSOR.SNAC_DEC_CONV_OUT,
+        MODEL_TENSOR.SNAC_VQ_IN_PROJ,
+        MODEL_TENSOR.SNAC_VQ_OUT_PROJ,
+        MODEL_TENSOR.SNAC_VQ_CODEBOOK,
     ],
     MODEL_ARCH.BAILINGMOE: [
         MODEL_TENSOR.TOKEN_EMBD,

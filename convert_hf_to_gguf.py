@@ -3651,6 +3651,32 @@ class WavTokenizerDecModel(TextModel):
         self.gguf_writer.add_causal_attention(False)
 
 
+class SnacDecModel(TextModel):
+    model_arch = gguf.MODEL_ARCH.SNAC_DEC
+
+    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
+        del bid
+
+        if name.endswith("_g") or name.endswith("_v"):
+            logger.debug(f"Skipping weight_norm parameter {name!r}")
+            return []
+
+        logger.info(f"{self.map_tensor_name(name)} -> {data_torch.shape}")
+
+        return [(self.map_tensor_name(name), data_torch)]
+
+    def set_vocab(self):
+        self._set_vocab_none()
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+        self.gguf_writer.add_vocab_size(self.hparams.get("codebook_size", 4096))
+        self.gguf_writer.add_block_count(len(self.hparams.get("decoder_rates", [7, 7, 3, 3])))
+        self.gguf_writer.add_embedding_length(self.hparams.get("latent_dim", 1536))
+        self.gguf_writer.add_feed_forward_length(self.hparams.get("decoder_dim", 1536))
+        self.gguf_writer.add_causal_attention(False)
+
+
 @ModelBase.register("Qwen2MoeForCausalLM")
 class Qwen2MoeModel(TextModel):
     model_arch = gguf.MODEL_ARCH.QWEN2MOE
