@@ -95,6 +95,28 @@ option(LLAMA_CURL       "llama: use libcurl to download model from an URL" ON)
 option(LLAMA_OPENSSL    "llama: use openssl to support HTTPS" OFF)
 option(LLAMA_LLGUIDANCE "llama-common: include LLGuidance library for structured output in common utils" OFF)
 
+# Find yaml-cpp for YAML config support
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(YAML_CPP QUIET yaml-cpp)
+endif()
+
+if(NOT YAML_CPP_FOUND)
+    find_package(yaml-cpp QUIET)
+    if(yaml-cpp_FOUND)
+        set(YAML_CPP_LIBRARIES yaml-cpp)
+        set(YAML_CPP_FOUND TRUE)
+    endif()
+endif()
+
+if(NOT YAML_CPP_FOUND)
+    message(STATUS "yaml-cpp not found, YAML config support will be disabled")
+    set(LLAMA_YAML_CONFIG OFF)
+else()
+    message(STATUS "Found yaml-cpp, enabling YAML config support")
+    set(LLAMA_YAML_CONFIG ON)
+endif()
+
 # Required for relocatable CMake package
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/build-info.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/common.cmake)

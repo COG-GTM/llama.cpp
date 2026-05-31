@@ -331,6 +331,52 @@ To learn more about model quantization, [read this documentation](tools/quantize
     </details>
 
 - <details>
+    <summary>Run with YAML configuration</summary>
+
+    llama.cpp supports loading configuration from YAML files using the `--config` flag. This allows you to organize complex configurations and share them easily.
+
+    ```bash
+    # Use YAML config
+    llama-cli --config configs/minimal.yaml
+
+    # Combine YAML with flag overrides
+    llama-cli --config configs/base.yaml --temp 0.5 --predict 256
+    ```
+
+    **Precedence rules:**
+    - Command line flags override YAML config values
+    - YAML config values override default values
+    - Order: `flags > yaml > defaults`
+
+    **Example YAML config:**
+    ```yaml
+    # Basic model and generation settings
+    model: "models/my-model.gguf"
+    ctx-size: 2048
+    predict: 128
+    seed: 42
+
+    # Sampling parameters
+    temp: 0.7
+    top-k: 40
+    top-p: 0.9
+
+    # Input/output
+    prompt: "Hello, how are you?"
+    color: true
+    ```
+
+    **Key features:**
+    - Relative paths in YAML are resolved relative to the config file location
+    - Unknown YAML keys are rejected with helpful error messages
+    - All CLI flags have corresponding YAML keys (use long flag names without `--`)
+    - Boolean flags can be set as `true`/`false` in YAML
+
+    See `configs/minimal.yaml` and `configs/override.yaml` for example configurations.
+
+    </details>
+
+- <details>
     <summary>Run in conversation mode with custom chat template</summary>
 
     ```bash
