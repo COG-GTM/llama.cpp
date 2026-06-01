@@ -87,6 +87,12 @@
 /src/llama-graph.*                      @CISC
 /src/llama-model-loader.*               @slaren
 /src/llama-model.*                      @CISC
+/src/llama-model/architectures/llama.cpp @CISC
+/src/llama-model/architectures/qwen2.cpp @CISC
+/src/llama-model/architectures/gemma.cpp @CISC
+/src/llama-model/loading/               @slaren
+/src/llama-model/registry/              @CISC
+/src/llama-model/interfaces/            @CISC
 /src/llama-vocab.*                      @CISC
 /tests/                                 @ggerganov
 /tests/test-backend-ops.cpp             @slaren
