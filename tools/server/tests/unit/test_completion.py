@@ -533,3 +533,148 @@ def test_cancel_request():
     time.sleep(1) # wait for HTTP_POLLING_SECONDS
     res = server.make_request("GET", "/slots")
     assert res.body[0]["is_processing"] == False
+
+
+@pytest.mark.parametrize("n_slots,n_requests", [
+    (8, 32),
+    (4, 64),
+    (8, 128),
+])
+def test_high_volume_concurrent_requests(n_slots: int, n_requests: int):
+    global server
+    server.n_slots = n_slots
+    server.n_ctx = 512
+    server.temperature = 0.8
+    server.start()
+
+    prompts = [
+        "Write a short story about",
+        "Explain the concept of",
+        "What is the best way to",
+        "Tell me about",
+        "How can I improve my",
+        "Describe a day in the life of",
+        "What are the benefits of",
+        "List three reasons why",
+    ]
+
+    tasks = []
+    for i in range(n_requests):
+        prompt = prompts[i % len(prompts)]
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": prompt,
+            "seed": 42 + i,
+            "n_predict": 16,
+            "temperature": 0.8,
+        })))
+
+    start_time = time.time()
+    results = parallel_function_calls(tasks)
+    duration = time.time() - start_time
+
+    successful_requests = 0
+    for res in results:
+        if res.status_code == 200 and "content" in res.body:
+            assert type(res.body["content"]) == str
+            successful_requests += 1
+
+    assert successful_requests == n_requests
+    throughput = n_requests / duration
+    print(f"High volume test: {n_requests} requests on {n_slots} slots in {duration:.2f}s ({throughput:.2f} req/s)")
+
+
+@pytest.mark.parametrize("n_slots", [4, 8])
+def test_concurrent_streaming_requests(n_slots: int):
+    global server
+    server.n_slots = n_slots
+    server.n_ctx = 512
+    server.start()
+
+    def make_streaming_completion(prompt: str, seed: int):
+        res = server.make_stream_request("POST", "/completion", data={
+            "prompt": prompt,
+            "seed": seed,
+            "n_predict": 24,
+            "stream": True,
+        })
+        content = ""
+        for chunk in res:
+            if "content" in chunk:
+                content += chunk["content"]
+        return content
+
+    prompts = [
+        ("Write something interesting", 100 + i)
+        for i in range(n_slots * 2)
+    ]
+
+    tasks = [(make_streaming_completion, (prompt, seed)) for prompt, seed in prompts]
+    results = parallel_function_calls(tasks)
+
+    for result in results:
+        assert isinstance(result, str)
+        assert len(result) > 0
+
+
+def test_concurrent_cache_consistency():
+    global server
+    server.n_slots = 8
+    server.n_ctx = 1024
+    server.cache_prompt = True
+    server.start()
+
+    shared_prompt_prefix = "In the beginning there was nothing but darkness and void. Then suddenly"
+
+    tasks = []
+    for i in range(32):
+        full_prompt = shared_prompt_prefix + f" variation {i % 4}"
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": full_prompt,
+            "seed": 42,
+            "n_predict": 16,
+            "cache_prompt": True,
+        })))
+
+    results = parallel_function_calls(tasks)
+
+    for res in results:
+        assert res.status_code == 200
+        assert "content" in res.body
+        assert type(res.body["content"]) == str
+        assert len(res.body["content"]) > 0
+
+
+@pytest.mark.parametrize("n_slots,n_sequences_per_slot", [
+    (4, 2),
+    (8, 2),
+])
+def test_parallel_sequence_processing(n_slots: int, n_sequences_per_slot: int):
+    global server
+    server.n_slots = n_slots
+    server.n_ctx = 512
+    server.start()
+
+    n_total_requests = n_slots * n_sequences_per_slot
+    prompts = [f"Tell me about topic number {i}" for i in range(n_total_requests)]
+
+    tasks = []
+    for i, prompt in enumerate(prompts):
+        tasks.append((server.make_request, ("POST", "/completion", {
+            "prompt": prompt,
+            "seed": 42 + i,
+            "n_predict": 20,
+            "temperature": 0.9,
+        })))
+
+    results = parallel_function_calls(tasks)
+
+    unique_contents = set()
+    for res in results:
+        assert res.status_code == 200
+        assert "content" in res.body
+        content = res.body["content"]
+        assert type(content) == str
+        assert len(content) > 0
+        unique_contents.add(content)
+
+    assert len(unique_contents) >= n_total_requests * 0.5
