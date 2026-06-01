@@ -1,0 +1,19 @@
+
+model: "models/llama-2-7b-chat.gguf"
+
+host: "127.0.0.1"
+port: 8080
+
+ctx_size: 4096
+batch_size: 512
+ubatch_size: 512
+
+threads: 8
+n_gpu_layers: -1
+
+temperature: 0.8
+top_k: 40
+top_p: 0.95
+repeat_penalty: 1.1
+
+verbose: 1
