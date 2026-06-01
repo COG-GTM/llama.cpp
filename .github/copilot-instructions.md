@@ -16,7 +16,7 @@ llama.cpp is a large-scale C/C++ project for efficient LLM (Large Language Model
 
 ### Prerequisites
 - CMake 3.14+ (primary build system)
-- C++17 compatible compiler (GCC 13.3+, Clang, MSVC)
+- C++23 compatible compiler (GCC 11+, Clang 12+, MSVC 2022+)
 - Optional: ccache for faster compilation
 
 ### Basic Build (CPU-only)
@@ -229,7 +229,7 @@ Primary tools:
 
 ### Required Tools
 - CMake 3.14+ (install via system package manager)
-- Modern C++ compiler with C++17 support
+- Modern C++ compiler with C++23 support
 - Git (for submodule management)
 - Python 3.9+ with virtual environment (`.venv` is provided)
 
