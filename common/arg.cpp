@@ -2,6 +2,9 @@
 
 #include "chat.h"
 #include "common.h"
+#ifdef LLAMA_ENABLE_CONFIG_YAML
+#include "config.h"
+#endif
 #include "gguf.h" // for reading GGUF splits
 #include "json-schema-to-grammar.h"
 #include "log.h"
@@ -1631,6 +1634,26 @@ bool common_params_parse(int argc, char ** argv, common_params & params, llama_e
     const common_params params_org = ctx_arg.params; // the example can modify the default params
 
     try {
+#ifdef LLAMA_ENABLE_CONFIG_YAML
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "--config") {
+                if (i + 1 >= argc) {
+                    throw std::invalid_argument("error: --config requires a file path");
+                }
+                std::string cfg_path = argv[++i];
+                if (!common_load_yaml_config(cfg_path, ctx_arg.params)) {
+                    throw std::invalid_argument("error: failed to load YAML config: " + cfg_path);
+                }
+                break;
+            }
+        }
+#else
+        for (int i = 1; i < argc; ++i) {
+            if (std::string(argv[i]) == "--config") {
+                throw std::invalid_argument("error: this build does not include YAML config support (LLAMA_BUILD_TOOLS=OFF)");
+            }
+        }
+#endif
         if (!common_params_parse_ex(argc, argv, ctx_arg)) {
             ctx_arg.params = params_org;
             return false;
@@ -1737,6 +1760,16 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
             params.completion = true;
         }
     ));
+
+#ifdef LLAMA_ENABLE_CONFIG_YAML
+    add_opt(common_arg(
+        {"--config"},
+        "<path/to/config.yaml>",
+        "Load parameters from a YAML config file; flags passed on the command line override values from the YAML file.",
+        [](common_params &, const std::string &) {
+        }
+    ));
+#endif
     add_opt(common_arg(
         {"--verbose-prompt"},
         string_format("print a verbose prompt before generation (default: %s)", params.verbose_prompt ? "true" : "false"),

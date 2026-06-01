@@ -1,0 +1,9 @@
+model:
+  path: ../models/stories15M-q4_0.gguf
+n_ctx: 256
+sampling:
+  seed: 42
+  temp: 0.8
+prompt: "Hello from YAML override"
+n_predict: 32
+simple_io: true

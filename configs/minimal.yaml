@@ -1,0 +1,9 @@
+model:
+  path: ../models/stories15M-q4_0.gguf
+n_ctx: 256
+sampling:
+  seed: 42
+  temp: 0.0
+prompt: "Hello from YAML"
+n_predict: 16
+simple_io: true

@@ -54,6 +54,38 @@ llama-cli -hf ggml-org/gemma-3-1b-it-GGUF
 llama-server -hf ggml-org/gemma-3-1b-it-GGUF
 ```
 
+### YAML Configuration
+
+You can use YAML configuration files to set parameters instead of command-line flags:
+
+```bash
+llama-cli --config configs/minimal.yaml
+```
+
+Example `minimal.yaml`:
+```yaml
+model:
+  path: models/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf
+n_ctx: 256
+sampling:
+  seed: 42
+  temp: 0.0
+prompt: "Hello from YAML"
+n_predict: 16
+simple_io: true
+```
+
+You can override YAML values with command-line flags:
+```bash
+llama-cli --config configs/minimal.yaml -n 32 --temp 0.8
+```
+
+**Precedence rules:** Command-line flags > YAML config > defaults
+
+**Path resolution:** Relative paths in YAML files are resolved relative to the YAML file's directory.
+
+**Error handling:** Unknown YAML keys will cause an error with a list of valid keys.
+
 ## Description
 
 The main goal of `llama.cpp` is to enable LLM inference with minimal setup and state-of-the-art performance on a wide
