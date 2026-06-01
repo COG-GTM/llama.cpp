@@ -6,6 +6,48 @@ import re
 import struct
 import numpy as np
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlparse
+
+
+def validate_host(host):
+    """Validate host parameter to prevent SSRF attacks.
+
+    Args:
+        host: Host string in format 'hostname:port' or 'hostname'
+
+    Returns:
+        bool: True if host is valid, False otherwise
+
+    Raises:
+        ValueError: If host format is invalid or contains suspicious patterns
+    """
+    if not host or not isinstance(host, str):
+        raise ValueError("Host must be a non-empty string")
+
+    if any(char in host for char in ['@', ' ', '\n', '\r', '\t', '\x00']):
+        raise ValueError("Host contains invalid characters")
+
+    try:
+        if not host.startswith(('http://', 'https://')):
+            test_url = f"http://{host}"
+        else:
+            test_url = host
+
+        parsed = urlparse(test_url)
+
+        if not parsed.hostname:
+            raise ValueError("Invalid hostname")
+
+        hostname = parsed.hostname.lower()
+
+        if parsed.scheme and parsed.scheme not in ('http', 'https'):
+            raise ValueError("Only HTTP and HTTPS schemes are allowed")
+
+        return True
+    except ValueError:
+        raise
+    except Exception as e:
+        raise ValueError(f"Invalid host format: {e}")
 
 
 def fill_hann_window(size, periodic=True):
@@ -136,6 +178,13 @@ if len(sys.argv) <= 3:
 host_llm = sys.argv[1]
 host_dec = sys.argv[2]
 text = sys.argv[3]
+
+try:
+    validate_host(host_llm)
+    validate_host(host_dec)
+except ValueError as e:
+    print(f"Error: Invalid host parameter - {e}")
+    exit(1)
 
 prefix = """<|im_start|>
 <|text_start|>the<|text_sep|>overall<|text_sep|>package<|text_sep|>from<|text_sep|>just<|text_sep|>two<|text_sep|>people<|text_sep|>is<|text_sep|>pretty<|text_sep|>remarkable<|text_sep|>sure<|text_sep|>i<|text_sep|>have<|text_sep|>some<|text_sep|>critiques<|text_sep|>about<|text_sep|>some<|text_sep|>of<|text_sep|>the<|text_sep|>gameplay<|text_sep|>aspects<|text_sep|>but<|text_sep|>its<|text_sep|>still<|text_sep|>really<|text_sep|>enjoyable<|text_sep|>and<|text_sep|>it<|text_sep|>looks<|text_sep|>lovely<|text_sep|>"""
