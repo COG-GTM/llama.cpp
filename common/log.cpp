@@ -332,12 +332,14 @@ public:
 
         if (file) {
             fclose(file);
+            file = nullptr;
         }
 
         if (path) {
             file = fopen(path, "w");
-        } else {
-            file = nullptr;
+            if (!file) {
+                fprintf(stderr, "Failed to open log file: %s\n", path);
+            }
         }
 
         resume();
