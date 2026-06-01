@@ -17,6 +17,32 @@
 //#define AT_PRINTF(...) GGML_LOG_DEBUG(__VA_ARGS__)
 #define AT_PRINTF(...)
 
+static size_t g_alloc_call_count = 0;
+static size_t g_alloc_fail_at = SIZE_MAX;
+static bool g_alloc_fail_enabled = false;
+
+static void ggml_alloc_error_injection_init(void) {
+    const char* fail_at_str = getenv("GGML_TEST_ALLOC_FAIL_AT");
+    if (fail_at_str != NULL) {
+        g_alloc_fail_at = (size_t)atoi(fail_at_str);
+        g_alloc_fail_enabled = true;
+    }
+}
+
+static bool ggml_alloc_should_fail(void) {
+    if (!g_alloc_fail_enabled) {
+        return false;
+    }
+    g_alloc_call_count++;
+    return g_alloc_call_count == g_alloc_fail_at;
+}
+
+static void ggml_alloc_error_injection_reset(void) {
+    g_alloc_call_count = 0;
+    g_alloc_fail_at = SIZE_MAX;
+    g_alloc_fail_enabled = false;
+}
+
 
 static bool ggml_is_view(const struct ggml_tensor * t) {
     return t->view_src != NULL;
