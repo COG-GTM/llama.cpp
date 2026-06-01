@@ -1,3 +1,5 @@
+##testing if devin picks up changes
+
 #if defined(_MSC_VER)
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #endif
@@ -525,6 +527,37 @@ std::string string_repeat(const std::string & str, size_t n) {
     }
 
     return result;
+}
+
+/**
+ * @brief Truncates a string to a maximum length, appending ellipsis if truncated.
+ *
+ * This function shortens a string to fit within a specified maximum length.
+ * If truncation occurs, "..." is appended to indicate the string was shortened.
+ *
+ * @param str The input string to truncate.
+ * @param max_len The maximum allowed length of the output string (including ellipsis).
+ *
+ * @return The original string if its length is <= max_len.
+ *         If max_len < 3, returns the first max_len characters without ellipsis.
+ *         Otherwise, returns the first (max_len - 3) characters followed by "...".
+ *
+ * @note This function operates on bytes, not Unicode code points. Truncating
+ *       UTF-8 strings may result in invalid sequences if cut mid-character.
+ *
+ * @example
+ *   string_truncate("Hello World", 8)  -> "Hello..."
+ *   string_truncate("Hi", 10)          -> "Hi"
+ *   string_truncate("Hello", 2)        -> "He"
+ */
+std::string string_truncate(const std::string & str, size_t max_len) {
+    if (str.length() <= max_len) {
+        return str;
+    }
+    if (max_len < 3) {
+        return str.substr(0, max_len);
+    }
+    return str.substr(0, max_len - 3) + "...";
 }
 
 std::string string_from(bool value) {

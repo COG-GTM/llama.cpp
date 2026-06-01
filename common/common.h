@@ -587,6 +587,9 @@ bool string_ends_with(const std::string_view & str, const std::string_view & suf
 bool string_remove_suffix(std::string & str, const std::string_view & suffix);
 size_t string_find_partial_stop(const std::string_view & str, const std::string_view & stop);
 
+// Truncate a string to a maximum length, adding ellipsis if truncated
+std::string string_truncate(const std::string & str, size_t max_len);
+
 bool string_parse_kv_override(const char * data, std::vector<llama_model_kv_override> & overrides);
 void string_process_escapes(std::string & input);
 
