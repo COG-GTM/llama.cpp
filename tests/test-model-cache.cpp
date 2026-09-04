@@ -103,6 +103,8 @@ void test_touch() {
     assert(cache.touch("touch.gguf"));
     const auto after = cache.list().front().added;
     assert(after >= before);
+    (void) before;
+    (void) after;
     assert(!cache.touch("missing"));
 }
 
