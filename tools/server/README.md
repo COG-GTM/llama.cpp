@@ -1410,6 +1410,18 @@ Apart from error types supported by OAI, we also have custom types that are spec
 
 ### Legacy completion web UI
 
+### Model cache endpoints
+
+When started with `--model-cache-dir`, the server exposes a local model hub:
+
+* `GET /models/cache` lists cached GGUF files.
+* `POST /models/cache/download` accepts a JSON body with `url`, `name`, and
+  optional `token` fields.
+* `DELETE /models/cache/:name` removes a cached file.
+* `GET /models/cache/file/:name` returns the raw cached file.
+
+The same cache can be managed with the `llama-model-hub` command-line tool.
+
 A new chat-based UI has replaced the old completion-based since [this PR](https://github.com/ggml-org/llama.cpp/pull/10175). If you want to use the old completion, start the server with `--path ./tools/server/public_legacy`
 
 For example:

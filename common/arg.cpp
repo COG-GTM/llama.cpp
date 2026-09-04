@@ -3044,6 +3044,17 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
         }
     ).set_examples({LLAMA_EXAMPLE_COMMON, LLAMA_EXAMPLE_EXPORT_LORA}).set_env("LLAMA_ARG_MODEL"));
     add_opt(common_arg(
+        {"--model-cache-dir"}, "PATH",
+        string_format("directory used by the local model hub cache (default: %s)", params.model_cache_dir.c_str()),
+        [](common_params & params, const std::string & value) {
+            params.model_cache_dir = value;
+            if (!params.model_cache_dir.empty() && params.model_cache_dir[0] == '~') {
+                const char * home = std::getenv("HOME");
+                params.model_cache_dir = std::string(home) + params.model_cache_dir.substr(1);
+            }
+        }
+    ).set_examples({LLAMA_EXAMPLE_COMMON, LLAMA_EXAMPLE_SERVER}).set_env("LLAMA_ARG_MODEL_CACHE_DIR"));
+    add_opt(common_arg(
         {"-mu", "--model-url"}, "MODEL_URL",
         "model download url (default: unused)",
         [](common_params & params, const std::string & value) {
