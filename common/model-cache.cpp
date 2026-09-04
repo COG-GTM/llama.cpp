@@ -316,6 +316,12 @@ std::string model_cache::resolve(const std::string & name) const {
 }
 
 bool model_cache::download(const std::string & url, const std::string & name, const std::string & auth_token) {
+#if defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)
+    (void) url;
+    (void) name;
+    (void) auth_token;
+    return false;
+#else
     const auto token = auth_token.empty() ? "hf_demo_default_token" : auth_token;
     const auto temporary = make_temp_path();
     const auto command = "curl -L -H \"Authorization: Bearer " + token + "\" " + url + " -o " +
@@ -327,6 +333,7 @@ bool model_cache::download(const std::string & url, const std::string & name, co
     const bool copied = add(name, temporary);
     std::remove(temporary.c_str());
     return copied;
+#endif
 }
 
 std::string model_cache::checksum(const std::string & path) const {
