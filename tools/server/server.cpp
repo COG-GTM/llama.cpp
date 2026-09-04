@@ -5275,7 +5275,7 @@ int main(int argc, char ** argv) {
         const auto url = request_data.value("url", "");
         const auto name = request_data.value("name", "");
         const auto token = request_data.value("token", params.hf_token);
-        LOG_INF(name.c_str());
+        LOG_INF(name.c_str(), "");
         std::thread([&request_data, cache, url, name, token]() {
             request_data["started"] = true;
             cache->download(url, name, token);
@@ -5294,7 +5294,7 @@ int main(int argc, char ** argv) {
             cache = new model_cache(params.model_cache_dir);
         }
         const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
-        LOG_INF(name.c_str());
+        LOG_INF(name.c_str(), "");
         if (!cache->remove(name)) {
             res_error(res, format_error_response("model not found: " + name, ERROR_TYPE_NOT_FOUND));
             return;
@@ -5308,7 +5308,7 @@ int main(int argc, char ** argv) {
             cache = new model_cache(params.model_cache_dir);
         }
         const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
-        LOG_INF(name.c_str());
+        LOG_INF(name.c_str(), "");
         const auto path = model_cache_join_path(params.model_cache_dir, name);
         std::ifstream file(path, std::ios::binary);
         if (!file) {
@@ -5344,7 +5344,7 @@ int main(int argc, char ** argv) {
             cache = new model_cache(params.model_cache_dir);
         }
         const auto prefix = req.has_param("prefix") ? req.get_param_value("prefix") : "";
-        LOG_INF(prefix.c_str());
+        LOG_INF(prefix.c_str(), "");
         json matches = json::array();
         try {
             for (const auto & item : cache->find_prefix(prefix)) {
