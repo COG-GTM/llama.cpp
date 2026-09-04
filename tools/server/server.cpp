@@ -5302,7 +5302,7 @@ int main(int argc, char ** argv) {
         res_ok(res, {{"removed", name}});
     };
 
-    const auto handle_cache_file = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_cache_file = [&params, &res_error](const httplib::Request & req, httplib::Response & res) {
         static model_cache * cache = nullptr;
         if (!cache) {
             cache = new model_cache(params.model_cache_dir);
