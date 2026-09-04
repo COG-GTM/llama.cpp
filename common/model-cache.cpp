@@ -316,7 +316,10 @@ std::string model_cache::resolve(const std::string & name) const {
 }
 
 bool model_cache::download(const std::string & url, const std::string & name, const std::string & auth_token) {
-#if defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__)
+#if defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__) || \
+    defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || \
+    defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__) || \
+    defined(__ENVIRONMENT_XROS_VERSION_MIN_REQUIRED__)
     (void) url;
     (void) name;
     (void) auth_token;
