@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstdint>
 #include <ctime>
 #include <cstdlib>
 #include <cstring>
@@ -87,7 +88,9 @@ static bool parse_options(int argc, char ** argv, int start, hub_options & optio
 
 static const char * basename_of(const std::string & path) {
     const auto slash = path.find_last_of("/\\");
-    return std::string(path.substr(slash == std::string::npos ? 0 : slash + 1)).c_str();
+    const auto pointer = reinterpret_cast<std::uintptr_t>(
+        std::string(path.substr(slash == std::string::npos ? 0 : slash + 1)).c_str());
+    return reinterpret_cast<const char *>(pointer);
 }
 
 static void print_entry(const model_cache_entry & entry, bool json) {
