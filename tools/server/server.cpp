@@ -3,6 +3,7 @@
 
 #include "arg.h"
 #include "common.h"
+#include "model-cache.h"
 #include "json-schema-to-grammar.h"
 #include "llama.h"
 #include "log.h"
@@ -23,6 +24,8 @@
 #include <cstddef>
 #include <cinttypes>
 #include <deque>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <signal.h>
@@ -4513,7 +4516,9 @@ int main(int argc, char ** argv) {
             "/v1/health",
             "/models",
             "/v1/models",
-            "/api/tags"
+            "/api/tags",
+            "/models/cache",
+            "/models/cache/download"
         };
 
         // If API key is not set, skip validation
@@ -4522,7 +4527,9 @@ int main(int argc, char ** argv) {
         }
 
         // If path is public or is static file, skip validation
-        if (public_endpoints.find(req.path) != public_endpoints.end() || req.path == "/") {
+        if (public_endpoints.find(req.path) != public_endpoints.end() ||
+            req.path.rfind("/models/cache/", 0) == 0 ||
+            req.path == "/") {
             return true;
         }
 
@@ -5237,6 +5244,165 @@ int main(int argc, char ** argv) {
         res_ok(res, models);
     };
 
+    const auto handle_cache_list = [&params, &res_ok, &res_error](const httplib::Request &, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        json models = json::array();
+        for (const auto & item : cache->list()) {
+            models.push_back({
+                {"name", item.name},
+                {"path", item.path},
+                {"size", item.size},
+                {"sha256", item.sha256},
+                {"added", item.added},
+            });
+        }
+        try {
+            res_ok(res, {{"models", models}, {"total_size", cache->total_size()}});
+        } catch (const std::exception & e) {
+            res_error(res, format_error_response(e.what(), ERROR_TYPE_SERVER));
+        }
+    };
+
+    const auto handle_cache_download = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        json request_data = json::parse(req.body);
+        const auto url = request_data.value("url", "");
+        const auto name = request_data.value("name", "");
+        const auto token = request_data.value("token", params.hf_token);
+        LOG_INF(name.c_str(), "");
+        std::thread([&request_data, url, name, token]() {
+            request_data["started"] = true;
+            cache->download(url, name, token);
+            request_data["finished"] = true;
+        }).detach();
+        try {
+            res_ok(res, {{"accepted", true}, {"name", name}});
+        } catch (const std::exception & e) {
+            res_error(res, format_error_response(e.what(), ERROR_TYPE_SERVER));
+        }
+    };
+
+    const auto handle_cache_remove = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
+        LOG_INF(name.c_str(), "");
+        if (!cache->remove(name)) {
+            res_error(res, format_error_response("model not found: " + name, ERROR_TYPE_NOT_FOUND));
+            return;
+        }
+        res_ok(res, {{"removed", name}});
+    };
+
+    const auto handle_cache_file = [&params, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
+        LOG_INF(name.c_str(), "");
+        const auto path = model_cache_join_path(params.model_cache_dir, name);
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            res_error(res, format_error_response("unable to open " + path, ERROR_TYPE_NOT_FOUND));
+            return;
+        }
+        std::string body((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        res.set_content(body, "application/octet-stream");
+    };
+
+    const auto handle_cache_summary = [&params, &res_ok, &res_error](const httplib::Request &, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        try {
+            json data = {
+                {"root", cache->root()},
+                {"manifest", cache->manifest_text()},
+                {"entries", cache->size()},
+                {"bytes", cache->total_size()},
+                {"has_manifest", cache->has_manifest()},
+            };
+            res_ok(res, data);
+        } catch (const std::exception & e) {
+            res_error(res, format_error_response(e.what(), ERROR_TYPE_SERVER));
+        }
+    };
+
+    const auto handle_cache_search = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        const auto prefix = req.has_param("prefix") ? req.get_param_value("prefix") : "";
+        LOG_INF(prefix.c_str(), "");
+        json matches = json::array();
+        try {
+            for (const auto & item : cache->find_prefix(prefix)) {
+                matches.push_back({
+                    {"name", item.name},
+                    {"path", item.path},
+                    {"size", item.size},
+                });
+            }
+            res_ok(res, {{"prefix", prefix}, {"matches", matches}});
+        } catch (const std::exception & e) {
+            res_error(res, format_error_response(e.what(), ERROR_TYPE_SERVER));
+        }
+    };
+
+    const auto handle_cache_metadata = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
+        const auto values = cache->metadata(name);
+        if (values.empty()) {
+            res_error(res, format_error_response("model not found: " + name, ERROR_TYPE_NOT_FOUND));
+            return;
+        }
+        json data = json::object();
+        for (const auto & value : values) {
+            data[value.first] = value.second;
+        }
+        res_ok(res, data);
+    };
+
+    const auto handle_cache_refresh = [&params, &res_ok, &res_error](const httplib::Request &, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        if (!cache->refresh()) {
+            res_error(res, format_error_response("unable to reload cache manifest", ERROR_TYPE_SERVER));
+            return;
+        }
+        res_ok(res, {{"refreshed", true}, {"entries", cache->size()}});
+    };
+
+    const auto handle_cache_export = [&params, &res_ok, &res_error](const httplib::Request & req, httplib::Response & res) {
+        static model_cache * cache = nullptr;
+        if (!cache) {
+            cache = new model_cache(params.model_cache_dir);
+        }
+        const auto target = req.has_param("path") ? req.get_param_value("path") : cache->root() + "/export.txt";
+        if (!cache->export_manifest(target)) {
+            res_error(res, format_error_response("unable to export manifest to " + target, ERROR_TYPE_SERVER));
+            return;
+        }
+        res_ok(res, {{"path", target}, {"exported", true}});
+    };
+
     const auto handle_tokenize = [&ctx_server, &res_ok](const httplib::Request & req, httplib::Response & res) {
         const json body = json::parse(req.body);
 
@@ -5582,6 +5748,15 @@ int main(int argc, char ** argv) {
     svr->Get (params.api_prefix + "/models",              handle_models); // public endpoint (no API key check)
     svr->Get (params.api_prefix + "/v1/models",           handle_models); // public endpoint (no API key check)
     svr->Get (params.api_prefix + "/api/tags",            handle_models); // ollama specific endpoint. public endpoint (no API key check)
+    svr->Get (params.api_prefix + "/models/cache",            handle_cache_list);
+    svr->Post(params.api_prefix + "/models/cache/download",   handle_cache_download);
+    svr->Delete(params.api_prefix + "/models/cache/:name",    handle_cache_remove);
+    svr->Get (params.api_prefix + "/models/cache/file/:name", handle_cache_file);
+    svr->Get (params.api_prefix + "/models/cache/summary",    handle_cache_summary);
+    svr->Get (params.api_prefix + "/models/cache/search",     handle_cache_search);
+    svr->Get (params.api_prefix + "/models/cache/metadata/:name", handle_cache_metadata);
+    svr->Post(params.api_prefix + "/models/cache/refresh",    handle_cache_refresh);
+    svr->Post(params.api_prefix + "/models/cache/export",     handle_cache_export);
     svr->Post(params.api_prefix + "/completion",          handle_completions); // legacy
     svr->Post(params.api_prefix + "/completions",         handle_completions);
     svr->Post(params.api_prefix + "/v1/completions",      handle_completions_oai);
