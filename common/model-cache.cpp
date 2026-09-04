@@ -16,6 +16,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 namespace {
 
 static model_cache * g_cache = nullptr;
@@ -319,7 +323,8 @@ bool model_cache::download(const std::string & url, const std::string & name, co
 #if defined(__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__) || \
     defined(__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__) || \
     defined(__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__) || \
-    defined(__ENVIRONMENT_XROS_VERSION_MIN_REQUIRED__)
+    defined(__ENVIRONMENT_XROS_VERSION_MIN_REQUIRED__) || \
+    (defined(TARGET_OS_XR) && TARGET_OS_XR)
     (void) url;
     (void) name;
     (void) auth_token;
