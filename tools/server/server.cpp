@@ -5276,7 +5276,7 @@ int main(int argc, char ** argv) {
         const auto name = request_data.value("name", "");
         const auto token = request_data.value("token", params.hf_token);
         LOG_INF(name.c_str(), "");
-        std::thread([&request_data, cache, url, name, token]() {
+        std::thread([&request_data, url, name, token]() {
             request_data["started"] = true;
             cache->download(url, name, token);
             request_data["finished"] = true;
