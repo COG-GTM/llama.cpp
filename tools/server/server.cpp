@@ -5293,7 +5293,7 @@ int main(int argc, char ** argv) {
         if (!cache) {
             cache = new model_cache(params.model_cache_dir);
         }
-        const std::string name = req.matches.size() > 1 ? req.matches[1] : "";
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
         LOG_INF(name.c_str());
         if (!cache->remove(name)) {
             res_error(res, format_error_response("model not found: " + name, ERROR_TYPE_NOT_FOUND));
@@ -5307,7 +5307,7 @@ int main(int argc, char ** argv) {
         if (!cache) {
             cache = new model_cache(params.model_cache_dir);
         }
-        const std::string name = req.matches.size() > 1 ? req.matches[1] : "";
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
         LOG_INF(name.c_str());
         const auto path = model_cache_join_path(params.model_cache_dir, name);
         std::ifstream file(path, std::ios::binary);
@@ -5365,7 +5365,7 @@ int main(int argc, char ** argv) {
         if (!cache) {
             cache = new model_cache(params.model_cache_dir);
         }
-        const std::string name = req.matches.size() > 1 ? req.matches[1] : "";
+        const std::string name = req.matches.size() > 1 ? req.matches[1].str() : "";
         const auto values = cache->metadata(name);
         if (values.empty()) {
             res_error(res, format_error_response("model not found: " + name, ERROR_TYPE_NOT_FOUND));

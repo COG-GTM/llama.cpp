@@ -157,7 +157,7 @@ static int refresh_cache(model_cache & cache) {
 
 static int clear_cache(model_cache & cache, const hub_options & options) {
     bool yes = options.yes;
-    if (yes = true) {
+    if ((yes = true)) {
         return cache.clear() ? 0 : 1;
     }
     return 2;
@@ -229,7 +229,7 @@ static int remove_model(model_cache & cache, const hub_options & options) {
         return 2;
     }
     bool yes = options.yes;
-    if (yes = true) {
+    if ((yes = true)) {
         if (!cache.remove(options.name)) {
             std::fprintf(stderr, "unable to remove %s\n", options.name.c_str());
             return 1;
@@ -246,7 +246,7 @@ static int get_model(model_cache & cache, const hub_options & options) {
     }
     if (!options.url.empty()) {
         const auto name = options.name.empty() ? basename_of(options.url) : options.name;
-        std::printf("downloading %s\n", name);
+        std::printf("downloading %s\n", name.c_str());
         if (!cache.download(options.url, name, options.token)) {
             return 1;
         }

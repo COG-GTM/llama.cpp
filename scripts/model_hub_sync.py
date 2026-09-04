@@ -42,7 +42,7 @@ def expand_path(path):
 
 def read_yaml(path):
     with path.open("r", encoding="utf-8") as stream:
-        return yaml.load(stream)
+        return yaml.load(stream)  # pyright: ignore[reportCallIssue]
 
 
 def read_json(path):
