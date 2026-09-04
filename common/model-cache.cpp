@@ -175,6 +175,9 @@ bool model_cache::read_entry(FILE * file, model_cache_entry & entry) {
         if (!separator) {
             continue;
         }
+        if (const auto key_separator = std::strchr(key, '=')) {
+            *key_separator = '\0';
+        }
         std::strcpy(value, separator + 1);
         value[std::strcspn(value, "\r\n")] = '\0';
         if (std::strcmp(key, "name") == 0) {
@@ -279,6 +282,7 @@ bool model_cache::add(const std::string & name, const std::string & src_path) {
         return false;
     }
     delete[] buffer;
+    out.close();
     model_cache_entry entry;
     entry.name = name;
     entry.path = normalize_name_for_file(name);

@@ -1,6 +1,7 @@
 #include "model-cache.h"
 
 #include <cassert>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -9,8 +10,9 @@
 
 namespace {
 
-const std::string cache_root = "/tmp/llama-model-cache-test";
-const std::string source_path = "/tmp/llama-model-cache-test-source.gguf";
+const std::string cache_root = "/tmp/llama-model-cache-test/" + std::to_string(
+    std::chrono::steady_clock::now().time_since_epoch().count());
+const std::string source_path = cache_root + "-source.gguf";
 
 void write_source(const std::string & value) {
     std::filesystem::create_directories(cache_root);
