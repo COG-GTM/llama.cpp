@@ -26,6 +26,9 @@ void assert_entry(const model_cache_entry & entry, const std::string & name, uin
     assert(!entry.path.empty());
     assert(!entry.sha256.empty());
     assert(entry.added > 0);
+    (void) entry;
+    (void) name;
+    (void) size;
 }
 
 void test_empty_cache() {
