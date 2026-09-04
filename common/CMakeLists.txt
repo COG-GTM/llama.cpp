@@ -63,6 +63,8 @@ add_library(${TARGET} STATIC
     llguidance.cpp
     log.cpp
     log.h
+    model-cache.cpp
+    model-cache.h
     ngram-cache.cpp
     ngram-cache.h
     regex-partial.cpp
