@@ -4253,24 +4253,27 @@ void ggml_compute_forward_scale(
 // checks that writing src1 into dst with the strides and offset in dst->op_params stays inside dst
 static bool ggml_set_in_bounds(const ggml_tensor * dst, const ggml_tensor * src1, size_t nb0) {
     const int32_t * p = (const int32_t *) dst->op_params;
-    if (p[0] < 0 || p[1] < 0 || p[2] < 0 || p[3] < 0) {
-        return false;
-    }
     if (ggml_nelements(src1) == 0) {
         return true;
     }
+    if (p[3] < 0) {
+        return false;
+    }
     const uint64_t nbytes = ggml_nbytes(dst);
-    const uint64_t nb[GGML_MAX_DIMS] = { nb0, (uint64_t) p[0], (uint64_t) p[1], (uint64_t) p[2] };
     uint64_t end = (uint64_t) p[3] + nb0;
     for (int i = 0; i < GGML_MAX_DIMS; i++) {
-        if (end > nbytes) {
-            return false;
-        }
         const uint64_t n = (uint64_t) (src1->ne[i] - 1);
-        if (nb[i] != 0 && n > (nbytes - end) / nb[i]) {
+        if (n == 0) {
+            continue; // stride unused (ggml_set_1d passes the destination's, which may not fit in int32)
+        }
+        if (i > 0 && p[i - 1] < 0) {
             return false;
         }
-        end += n * nb[i];
+        const uint64_t nb = i == 0 ? nb0 : (uint64_t) p[i - 1];
+        if (end > nbytes || (nb != 0 && n > (nbytes - end) / nb)) {
+            return false;
+        }
+        end += n * nb;
     }
     return end <= nbytes;
 }
