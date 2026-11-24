@@ -6,6 +6,7 @@
 #include "ggml-rpc.h"
 
 #include <arpa/inet.h>
+#include <poll.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
@@ -186,7 +187,12 @@ struct session {
         }
         a = make_f32(1, buf.handle, buf.base +  0, 4);
         b = make_f32(2, buf.handle, buf.base + 16, 4);
-        return set_tensor(fd, a, A, 4) && set_tensor(fd, b, B, 4);
+        if (!set_tensor(fd, a, A, 4) || !set_tensor(fd, b, B, 4)) {
+            return false;
+        }
+        // SET_TENSOR has no reply: read b back so a broken setup is not mistaken for a rejection later
+        float check_b[4] = {};
+        return get_tensor(fd, b, check_b, 4) && memcmp(check_b, B, sizeof(B)) == 0;
     }
 
     rpc_tensor add_node(uint64_t buffer, uint64_t data) const {
@@ -213,6 +219,16 @@ static void check(bool ok, const char * name) {
     }
 }
 
+// true if the server closed the connection (EOF) within a few seconds without sending anything
+static bool server_closed(int fd) {
+    pollfd pfd = { fd, POLLIN, 0 };
+    if (poll(&pfd, 1, 5000) <= 0) {
+        return false;
+    }
+    char c;
+    return recv(fd, &c, 1, 0) == 0;
+}
+
 // sends one malicious graph on a fresh connection and checks it is rejected without touching local memory
 static void expect_rejected(const char * name, float * canary, const std::vector<uint64_t> & nodes,
                             const std::vector<rpc_tensor> & extra, bool add_inputs = true) {
@@ -232,7 +248,7 @@ static void expect_rejected(const char * name, float * canary, const std::vector
     }
     const bool computed = graph_compute(s.fd, nodes, tensors);
     const bool canary_intact = canary == nullptr || (canary[0] == -1.0f && canary[3] == -1.0f);
-    check(!computed && canary_intact, name);
+    check(!computed && server_closed(s.fd) && canary_intact, name);
 }
 
 int main() {
@@ -288,6 +304,33 @@ int main() {
         session tmp;
         rpc_tensor c = tmp.add_node(0xdeadbeef, canary_addr);
         expect_rejected("unknown buffer with non-zero data is rejected", canary, { c.id }, { c });
+    }
+
+    // input tensor with buffer = 0 and a raw data pointer into this process
+    {
+        session tmp;
+        rpc_tensor c = tmp.add_node(UINT64_MAX, UINT64_MAX);
+        rpc_tensor bad = make_f32(4, 0, canary_addr, 4);
+        c.src[1] = bad.id;
+        expect_rejected("source with buffer=0 and non-zero data is rejected", canary, { c.id }, { c, bad });
+    }
+
+    // no-op node that lives outside this server (e.g. a client-side view): ignored, raw pointer never used
+    {
+        session s;
+        bool ok = s.open();
+        rpc_tensor v = make_f32(5, 0, canary_addr, 4);
+        v.op = GGML_OP_RESHAPE;
+        ok = ok && graph_compute(s.fd, { v.id }, { v });
+        check(ok && canary[0] == -1.0f && canary[3] == -1.0f, "no-op node with foreign data is ignored");
+    }
+
+    // innermost stride smaller than the element size
+    {
+        session tmp;
+        rpc_tensor c = tmp.add_node(UINT64_MAX, UINT64_MAX);
+        c.nb[0] = 0;
+        expect_rejected("nb[0] smaller than the type size is rejected", nullptr, { c.id }, { c });
     }
 
     // strides whose byte size wraps to 4 bytes so the bounds check would pass
