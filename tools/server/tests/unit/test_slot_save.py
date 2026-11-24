@@ -1,3 +1,4 @@
+import os
 import pytest
 from utils import *
 
@@ -104,6 +105,7 @@ def test_slot_actions_isolated_between_api_keys(monkeypatch):
     server.api_key = "key-alice"
     server.extra_api_keys = ["key-mallory"]
     server.server_slots = True
+    os.makedirs(server.slot_save_path, exist_ok=True)
     server.start()
     alice = {"Authorization": "Bearer key-alice"}
     mallory = {"Authorization": "Bearer key-mallory"}
