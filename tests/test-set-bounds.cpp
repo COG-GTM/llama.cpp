@@ -3,6 +3,12 @@
 #include "ggml-cpu.h"
 
 #include <cstdio>
+#include <cstdlib>
+
+#ifndef _WIN32
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 static ggml_context * make_ctx() {
     ggml_init_params params = { 16*1024*1024, nullptr, false };
@@ -74,6 +80,29 @@ int main() {
         n_failed += !ok;
         ggml_free(ctx);
     }
+
+#ifndef _WIN32
+    // a write whose last element starts at the end of dst must abort instead of writing past it
+    {
+        fflush(stdout);
+        const pid_t pid = fork();
+        if (pid == 0) {
+            setenv("GGML_NO_BACKTRACE", "1", 1);
+            if (freopen("/dev/null", "w", stderr) == nullptr) { /* keep going with stderr */ }
+            ggml_context * ctx = make_ctx();
+            ggml_tensor * a = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 8);
+            ggml_tensor * b = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, 2);
+            fill(a, 0.0f);
+            fill(b, 50.0f);
+            compute(ctx, ggml_set_1d(ctx, a, b, 7*sizeof(float)));
+            _exit(0);
+        }
+        int status = 0;
+        const bool ok = pid > 0 && waitpid(pid, &status, 0) == pid && !(WIFEXITED(status) && WEXITSTATUS(status) == 0);
+        printf("  %-50s %s\n", "write past the destination end aborts", ok ? "OK" : "FAIL");
+        n_failed += !ok;
+    }
+#endif
 
     printf("%s\n", n_failed == 0 ? "OK" : "FAILED");
     return n_failed == 0 ? 0 : 1;
