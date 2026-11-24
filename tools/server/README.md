@@ -890,6 +890,8 @@ This endpoint is enabled by default and can be disabled with `--no-slots`. It ca
 
 If query param `?fail_on_no_slot=1` is set, this endpoint will respond with status code 503 if there is no available slots.
 
+The `prompt` and `generated` text of a slot are only included when the server runs with `LLAMA_SERVER_SLOTS_DEBUG` set to a non-zero value, and only for slots whose last request used the caller's API key.
+
 **Response format**
 
 <details>
@@ -1047,6 +1049,8 @@ Available metrics:
 - `llamacpp:requests_deferred`: Number of requests deferred.
 - `llamacpp:n_past_max`: High watermark of the context size observed.
 
+When API keys are configured, slot actions are bound to the caller's API key: a slot can only be saved, restored into or erased by the API key whose request last used it (status 403 otherwise), and save files are stored in a per-key subdirectory of `--slot-save-path`, so one key cannot restore or overwrite another key's files.
+
 ### POST `/slots/{id_slot}?action=save`: Save the prompt cache of the specified slot to a file.
 
 *Options:*
@@ -1072,6 +1076,8 @@ Available metrics:
 *Options:*
 
 `filename`: Name of the file to restore the slot's prompt cache from. The file should be located in the directory specified by the `--slot-save-path` server parameter.
+
+When API keys are configured, files are read from the caller's own subdirectory of `--slot-save-path` (named after the SHA-256 hex digest of the API key), the same place `save` writes them. Files saved at the root of `--slot-save-path` by older versions must be moved into that subdirectory to be restored with a key. Likewise, after an API key is rotated, files saved under the old key's subdirectory must be moved into the new key's subdirectory to remain restorable.
 
 **Response format**
 

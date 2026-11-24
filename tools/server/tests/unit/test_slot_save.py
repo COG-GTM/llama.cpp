@@ -1,3 +1,4 @@
+import os
 import pytest
 from utils import *
 
@@ -96,3 +97,90 @@ def test_slot_erase():
     assert res.status_code == 200
     assert match_regex("(Whiskers|Flana)+", res.body["content"])
     assert res.body["timings"]["prompt_n"] == 21  # all tokens are processed
+
+
+def test_slot_actions_isolated_between_api_keys(monkeypatch):
+    global server
+    monkeypatch.setenv("LLAMA_SERVER_SLOTS_DEBUG", "1")
+    server.api_key = "key-alice"
+    server.extra_api_keys = ["key-mallory"]
+    server.server_slots = True
+    os.makedirs(server.slot_save_path, exist_ok=True)
+    server.start()
+    alice = {"Authorization": "Bearer key-alice"}
+    mallory = {"Authorization": "Bearer key-mallory"}
+
+    # Alice fills slot 1
+    res = server.make_request("POST", "/completion", headers=alice, data={
+        "prompt": "What is the capital of France?",
+        "id_slot": 1,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    alice_prompt_n = res.body["timings"]["prompt_n"]
+
+    # Mallory cannot save, restore into or erase Alice's slot
+    res = server.make_request("POST", "/slots/1?action=save", headers=mallory, data={"filename": "stolen.bin"})
+    assert res.status_code == 403
+    res = server.make_request("POST", "/slots/1?action=erase", headers=mallory)
+    assert res.status_code == 403
+    res = server.make_request("POST", "/slots/1?action=restore", headers=mallory, data={"filename": "stolen.bin"})
+    assert res.status_code == 403
+
+    # Alice can save her own slot
+    res = server.make_request("POST", "/slots/1?action=save", headers=alice, data={"filename": "alice.bin"})
+    assert res.status_code == 200
+    assert res.body["n_saved"] == 84
+
+    # Mallory cannot restore Alice's save file, even into a free slot
+    res = server.make_request("POST", "/slots/0?action=restore", headers=mallory, data={"filename": "alice.bin"})
+    assert res.status_code == 400
+
+    # Even in debug mode, /slots only shows prompt and generated text to the slot's owner
+    res = server.make_request("GET", "/slots", headers=mallory)
+    assert res.status_code == 200
+    slot1 = next(s for s in res.body if s["id"] == 1)
+    assert "prompt" not in slot1
+    assert "generated" not in slot1
+    res = server.make_request("GET", "/slots", headers=alice)
+    assert res.status_code == 200
+    slot1 = next(s for s in res.body if s["id"] == 1)
+    assert "France" in slot1["prompt"]
+
+    # Alice can still restore and erase her own slot
+    res = server.make_request("POST", "/slots/0?action=restore", headers=alice, data={"filename": "alice.bin"})
+    assert res.status_code == 200
+    assert res.body["n_restored"] == 84
+    # restoring gives Alice ownership of slot 0, so Mallory cannot touch it
+    res = server.make_request("POST", "/slots/0?action=erase", headers=mallory)
+    assert res.status_code == 403
+    res = server.make_request("POST", "/slots/1?action=erase", headers=alice)
+    assert res.status_code == 200
+
+    # Once Mallory claims a slot with her own request, she can act on it
+    res = server.make_request("POST", "/completion", headers=mallory, data={
+        "prompt": "Hello",
+        "id_slot": 1,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    res = server.make_request("POST", "/slots/1?action=save", headers=mallory, data={"filename": "mallory.bin"})
+    assert res.status_code == 200
+    # and now Alice is the one locked out
+    res = server.make_request("POST", "/slots/1?action=erase", headers=alice)
+    assert res.status_code == 403
+
+    # Claiming a slot drops the previous key's cached prompt instead of reusing it
+    res = server.make_request("POST", "/completion", headers=alice, data={
+        "prompt": "What is the capital of France?",
+        "id_slot": 0,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    res = server.make_request("POST", "/completion", headers=mallory, data={
+        "prompt": "What is the capital of France?",
+        "id_slot": 0,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    assert res.body["timings"]["prompt_n"] == alice_prompt_n
