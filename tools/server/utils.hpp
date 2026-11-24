@@ -460,12 +460,12 @@ static std::string sha256_hex(const std::string & input) {
         }
         uint32_t a = h[0], b = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
         for (int i = 0; i < 64; i++) {
-            const uint32_t S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+            const uint32_t big_sigma1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
             const uint32_t ch = (e & f) ^ (~e & g);
-            const uint32_t t1 = hh + S1 + ch + k[i] + w[i];
-            const uint32_t S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+            const uint32_t t1 = hh + big_sigma1 + ch + k[i] + w[i];
+            const uint32_t big_sigma0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
             const uint32_t mj = (a & b) ^ (a & c) ^ (b & c);
-            const uint32_t t2 = S0 + mj;
+            const uint32_t t2 = big_sigma0 + mj;
             hh = g; g = f; f = e; e = d + t1; d = c; c = b; b = a; a = t1 + t2;
         }
         h[0] += a; h[1] += b; h[2] += c; h[3] += d; h[4] += e; h[5] += f; h[6] += g; h[7] += hh;
