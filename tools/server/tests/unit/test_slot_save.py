@@ -148,6 +148,9 @@ def test_slot_actions_isolated_between_api_keys(monkeypatch):
     res = server.make_request("POST", "/slots/0?action=restore", headers=alice, data={"filename": "alice.bin"})
     assert res.status_code == 200
     assert res.body["n_restored"] == 84
+    # restoring gives Alice ownership of slot 0, so Mallory cannot touch it
+    res = server.make_request("POST", "/slots/0?action=erase", headers=mallory)
+    assert res.status_code == 403
     res = server.make_request("POST", "/slots/1?action=erase", headers=alice)
     assert res.status_code == 200
 
