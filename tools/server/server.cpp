@@ -26,6 +26,7 @@
 #include <filesystem>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <signal.h>
 #include <thread>
 #include <unordered_map>
@@ -1651,6 +1652,9 @@ struct server_slot {
 
     common_speculative * spec = nullptr;
 
+    // API key whose request last used the draft state; unset until the first launch
+    std::optional<std::string> draft_owner;
+
     std::unique_ptr<const server_task> task;
     std::unique_ptr<const server_task> task_prev; // used for debugging
 
@@ -2758,20 +2762,22 @@ struct server_context {
             slot.prompt.tokens.clear();
             slot.prompt.checkpoints.clear();
             slot.prompt.owner = task.owner;
+        }
 
-            if (slot.spec) {
-                llama_memory_clear(llama_get_memory(slot.ctx_dft), true);
-                common_speculative_free(slot.spec);
-                slot.spec = common_speculative_init(slot.ctx, slot.ctx_dft);
-                if (slot.spec == nullptr) {
-                    send_error(task, "Failed to reset speculative decoding state", ERROR_TYPE_SERVER);
-                    return false;
-                }
-                for (auto & pair : params_base.speculative.replacements) {
-                    common_speculative_add_replacement_tgt_dft(slot.spec, pair.first.c_str(), pair.second.c_str());
-                }
+        // the draft state is not part of the prompt cache, so track its owner separately
+        if (slot.spec && slot.draft_owner.has_value() && *slot.draft_owner != task.owner) {
+            llama_memory_clear(llama_get_memory(slot.ctx_dft), true);
+            common_speculative_free(slot.spec);
+            slot.spec = common_speculative_init(slot.ctx, slot.ctx_dft);
+            if (slot.spec == nullptr) {
+                send_error(task, "Failed to reset speculative decoding state", ERROR_TYPE_SERVER);
+                return false;
+            }
+            for (auto & pair : params_base.speculative.replacements) {
+                common_speculative_add_replacement_tgt_dft(slot.spec, pair.first.c_str(), pair.second.c_str());
             }
         }
+        slot.draft_owner = task.owner;
 
         if (!are_lora_equal(task.params.lora, slot.lora)) {
             // if lora has changed, check to see if the cache should be cleared
