@@ -1077,7 +1077,7 @@ When API keys are configured, slot actions are bound to the caller's API key: a 
 
 `filename`: Name of the file to restore the slot's prompt cache from. The file should be located in the directory specified by the `--slot-save-path` server parameter.
 
-When API keys are configured, files are read from the caller's own subdirectory of `--slot-save-path` (named after the SHA-256 hex digest of the API key), the same place `save` writes them. Files saved at the root of `--slot-save-path` by older versions must be moved into that subdirectory to be restored with a key.
+When API keys are configured, files are read from the caller's own subdirectory of `--slot-save-path` (named after the SHA-256 hex digest of the API key), the same place `save` writes them. Files saved at the root of `--slot-save-path` by older versions must be moved into that subdirectory to be restored with a key. Likewise, after an API key is rotated, files saved under the old key's subdirectory must be moved into the new key's subdirectory to remain restorable.
 
 **Response format**
 
