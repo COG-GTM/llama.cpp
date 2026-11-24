@@ -115,6 +115,7 @@ def test_slot_actions_isolated_between_api_keys(monkeypatch):
         "cache_prompt": True,
     })
     assert res.status_code == 200
+    alice_prompt_n = res.body["timings"]["prompt_n"]
 
     # Mallory cannot save, restore into or erase Alice's slot
     res = server.make_request("POST", "/slots/1?action=save", headers=mallory, data={"filename": "stolen.bin"})
@@ -166,3 +167,18 @@ def test_slot_actions_isolated_between_api_keys(monkeypatch):
     # and now Alice is the one locked out
     res = server.make_request("POST", "/slots/1?action=erase", headers=alice)
     assert res.status_code == 403
+
+    # Claiming a slot drops the previous key's cached prompt instead of reusing it
+    res = server.make_request("POST", "/completion", headers=alice, data={
+        "prompt": "What is the capital of France?",
+        "id_slot": 0,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    res = server.make_request("POST", "/completion", headers=mallory, data={
+        "prompt": "What is the capital of France?",
+        "id_slot": 0,
+        "cache_prompt": True,
+    })
+    assert res.status_code == 200
+    assert res.body["timings"]["prompt_n"] == alice_prompt_n

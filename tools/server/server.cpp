@@ -1422,6 +1422,9 @@ struct server_prompt {
 
     std::list<server_prompt_checkpoint> checkpoints;
 
+    // identity of the API key whose request produced this state (empty when no API keys are configured)
+    std::string owner;
+
     size_t size() const {
         size_t res = data.size();
 
@@ -1474,6 +1477,10 @@ struct server_prompt_cache {
     server_prompt * alloc(const server_prompt & prompt, size_t state_size) {
         // first check if the current state is contained fully in the cache
         for (auto it = states.begin(); it != states.end(); ++it) {
+            if (it->owner != prompt.owner) {
+                continue;
+            }
+
             const int cur_lcp_len = it->tokens.get_common_prefix(prompt.tokens);
 
             if (cur_lcp_len == (int) prompt.tokens.size()) {
@@ -1518,12 +1525,13 @@ struct server_prompt_cache {
             /*.tokens      =*/ server_tokens(prompt.tokens.get_text_tokens(), false),
             /*.data        =*/ std::move(state_data),
             /*.checkpoints =*/ prompt.checkpoints,
+            /*.owner       =*/ prompt.owner,
         };
 
         return &cur;
     }
 
-    bool load(server_prompt & prompt, const server_tokens & tokens_new, llama_context * ctx, int32_t id_slot) {
+    bool load(server_prompt & prompt, const server_tokens & tokens_new, const std::string & owner, llama_context * ctx, int32_t id_slot) {
         const int lcp_best = prompt.tokens.get_common_prefix(tokens_new);
 
         float f_keep_best = float(lcp_best) / prompt.tokens.size();
@@ -1535,6 +1543,11 @@ struct server_prompt_cache {
 
         // find the most similar cached prompt, that would also preserve the most context
         for (auto it = states.begin(); it != states.end(); ++it) {
+            // never hand one API key's cached state to another
+            if (it->owner != owner) {
+                continue;
+            }
+
             const int lcp_cur = it->tokens.get_common_prefix(tokens_new);
 
             const float f_keep_cur = float(lcp_cur) / it->tokens.size();
@@ -1635,9 +1648,6 @@ struct server_slot {
     std::unique_ptr<const server_task> task;
     std::unique_ptr<const server_task> task_prev; // used for debugging
 
-    // owner of the last task run in this slot; its data stays in the KV cache after release
-    std::string owner;
-
     // used to determine the slot that has been used the longest
     int64_t t_last_used = -1;
 
@@ -1694,8 +1704,8 @@ struct server_slot {
         llama_state_seq_get_data_ext(ctx, cur->data.data(), cur_size, id, 0);
     }
 
-    void prompt_load(server_prompt_cache & prompt_cache, const server_tokens & tokens) {
-        bool res = prompt_cache.load(prompt, tokens, ctx, id);
+    void prompt_load(server_prompt_cache & prompt_cache, const server_tokens & tokens, const std::string & owner) {
+        bool res = prompt_cache.load(prompt, tokens, owner, ctx, id);
         if (!res) {
             SLT_WRN(*this, "%s", "failed to load prompt from cache\n");
         }
@@ -2633,6 +2643,11 @@ struct server_context {
                     continue;
                 }
 
+                // skip the slot if its cached tokens belong to another API key
+                if (slot.prompt.owner != task.owner) {
+                    continue;
+                }
+
                 // fraction of the Longest Common Prefix length with respect to the input prompt length
                 const float sim_cur = float(tokens.get_common_prefix(task.tokens)) / task.tokens.size();
 
@@ -2701,7 +2716,7 @@ struct server_context {
                 const int64_t t_start = ggml_time_us();
 
                 ret->prompt_save(*prompt_cache);
-                ret->prompt_load(*prompt_cache, task.tokens);
+                ret->prompt_load(*prompt_cache, task.tokens, task.owner);
 
                 prompt_cache->update();
 
@@ -2712,8 +2727,32 @@ struct server_context {
         return ret;
     }
 
+    // checks that the per-owner directory holding filepath is a real directory (not a symlink), creating it
+    // with owner-only permissions if requested; the save root itself is left to the operator
+    static bool prepare_owner_save_dir(const std::string & filepath, bool create) {
+        const std::filesystem::path dir = std::filesystem::path(filepath).parent_path();
+        std::error_code ec;
+        if (create && std::filesystem::create_directory(dir, ec)) {
+            std::filesystem::permissions(dir, std::filesystem::perms::owner_all, std::filesystem::perm_options::replace, ec);
+            return !ec;
+        }
+        if (ec) {
+            return false;
+        }
+        const auto status = std::filesystem::symlink_status(dir, ec);
+        return !ec && std::filesystem::is_directory(status);
+    }
+
     bool launch_slot_with_task(server_slot & slot, server_task && task) {
         slot.reset();
+
+        // drop cached state left by another API key before this task can use or claim the slot
+        if (slot.prompt.owner != task.owner) {
+            llama_memory_seq_rm(llama_get_memory(ctx), slot.id, -1, -1);
+            slot.prompt.tokens.clear();
+            slot.prompt.checkpoints.clear();
+            slot.prompt.owner = task.owner;
+        }
 
         if (!are_lora_equal(task.params.lora, slot.lora)) {
             // if lora has changed, check to see if the cache should be cleared
@@ -2805,9 +2844,6 @@ struct server_context {
         slot.task = std::make_unique<const server_task>(std::move(task));
 
         slot.state = SLOT_STATE_STARTED;
-
-        // only take ownership once the task is accepted, so a rejected request cannot claim another key's cached state
-        slot.owner = slot.task->owner;
 
         SLT_INF(slot, "%s", "processing task\n");
 
@@ -3382,7 +3418,7 @@ struct server_context {
 
                     for (server_slot & slot : slots) {
                         // prompt and generated text are only shown in debug mode, and only to the slot's owner
-                        const bool show_text = slots_debug != 0 && slot.owner == task.owner;
+                        const bool show_text = slots_debug != 0 && slot.prompt.owner == task.owner;
                         json slot_data = slot.to_json(!show_text);
 
                         if (slot.is_processing()) {
@@ -3441,7 +3477,7 @@ struct server_context {
                         queue_tasks.defer(std::move(task));
                         break;
                     }
-                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
                         send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
@@ -3451,6 +3487,11 @@ struct server_context {
 
                     std::string filename = task.slot_action.filename;
                     std::string filepath = task.slot_action.filepath;
+
+                    if (!task.owner.empty() && !prepare_owner_save_dir(filepath, true)) {
+                        send_error(task, "Unable to use slot save directory", ERROR_TYPE_SERVER);
+                        break;
+                    }
 
                     const llama_tokens & tokens = slot->prompt.tokens.get_text_tokens();
                     const size_t nwrite = llama_state_seq_save_file(ctx, filepath.c_str(), slot->id, tokens.data(), token_count);
@@ -3483,7 +3524,7 @@ struct server_context {
                         queue_tasks.defer(std::move(task));
                         break;
                     }
-                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
                         send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
@@ -3492,6 +3533,11 @@ struct server_context {
 
                     std::string filename = task.slot_action.filename;
                     std::string filepath = task.slot_action.filepath;
+
+                    if (!task.owner.empty() && !prepare_owner_save_dir(filepath, false)) {
+                        send_error(task, "Unable to restore slot, invalid slot save file", ERROR_TYPE_INVALID_REQUEST);
+                        break;
+                    }
 
                     llama_tokens tokens;
                     tokens.resize(slot->n_ctx);
@@ -3505,7 +3551,7 @@ struct server_context {
                     tokens.resize(token_count);
                     slot->prompt.tokens.clear();
                     slot->prompt.tokens.insert(tokens);
-                    slot->owner = task.owner;
+                    slot->prompt.owner = task.owner;
 
                     const int64_t t_end = ggml_time_us();
                     const double t_restore_ms = (t_end - t_start) / 1000.0;
@@ -3537,7 +3583,7 @@ struct server_context {
                         queue_tasks.defer(std::move(task));
                         break;
                     }
-                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
                         send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
@@ -4783,16 +4829,6 @@ int main(int argc, char ** argv) {
         // save files are namespaced per API key so one key cannot read or overwrite another key's files
         std::string save_dir = params.slot_save_path;
         if (!owner.empty()) {
-            const std::filesystem::path owner_dir = std::filesystem::path(save_dir) / owner;
-            std::error_code ec;
-            std::filesystem::create_directories(owner_dir, ec);
-            if (!ec) {
-                std::filesystem::permissions(owner_dir, std::filesystem::perms::owner_all, std::filesystem::perm_options::replace, ec);
-            }
-            if (ec) {
-                res_error(res, format_error_response("Unable to create slot save directory", ERROR_TYPE_SERVER));
-                return;
-            }
             save_dir += owner + DIRECTORY_SEPARATOR;
         }
         std::string filepath = save_dir + filename;
