@@ -2714,8 +2714,6 @@ struct server_context {
     bool launch_slot_with_task(server_slot & slot, server_task && task) {
         slot.reset();
 
-        slot.owner = task.owner;
-
         if (!are_lora_equal(task.params.lora, slot.lora)) {
             // if lora has changed, check to see if the cache should be cleared
             if (lora_should_clear_cache(slot.lora, task.params.lora)) {
@@ -2806,6 +2804,9 @@ struct server_context {
         slot.task = std::make_unique<const server_task>(std::move(task));
 
         slot.state = SLOT_STATE_STARTED;
+
+        // only take ownership once the task is accepted, so a rejected request cannot claim another key's cached state
+        slot.owner = slot.task->owner;
 
         SLT_INF(slot, "%s", "processing task\n");
 
