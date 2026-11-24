@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <chrono>
@@ -95,6 +96,9 @@ static bool recv_rsp(int fd, void * out, uint64_t size) {
 static int connect_server() {
     for (int attempt = 0; attempt < 100; attempt++) {
         int fd = socket(AF_INET, SOCK_STREAM, 0);
+        // never block forever if the server neither replies nor disconnects
+        timeval tv = { 10, 0 };
+        setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
         sockaddr_in addr = {};
         addr.sin_family = AF_INET;
         addr.sin_port = htons(g_port);
@@ -156,7 +160,7 @@ static bool get_tensor(int fd, const rpc_tensor & t, float * out, size_t n) {
     return send_cmd(fd, CMD_GET_TENSOR, &req, sizeof(req)) && recv_rsp(fd, out, n*sizeof(float));
 }
 
-// returns true if the server computed the graph and replied, false if it rejected it and closed the connection
+// returns true if the server computed the graph successfully, false if it rejected it and closed the connection
 static bool graph_compute(int fd, const std::vector<uint64_t> & nodes, const std::vector<rpc_tensor> & tensors) {
     std::vector<uint8_t> msg;
     auto put = [&](const void * p, size_t sz) { msg.insert(msg.end(), (const uint8_t *) p, (const uint8_t *) p + sz); };
@@ -169,7 +173,8 @@ static bool graph_compute(int fd, const std::vector<uint64_t> & nodes, const std
     put(&n_tensors, sizeof(n_tensors));
     put(tensors.data(), tensors.size()*sizeof(rpc_tensor));
     uint8_t status;
-    return send_cmd(fd, CMD_GRAPH_COMPUTE, msg.data(), msg.size()) && recv_rsp(fd, &status, sizeof(status));
+    return send_cmd(fd, CMD_GRAPH_COMPUTE, msg.data(), msg.size()) && recv_rsp(fd, &status, sizeof(status)) &&
+           status == GGML_STATUS_SUCCESS;
 }
 
 static const float A[4] = { 1.0f, 2.0f, 3.0f, 4.0f };
@@ -319,9 +324,12 @@ int main() {
     {
         session s;
         bool ok = s.open();
-        rpc_tensor v = make_f32(5, 0, canary_addr, 4);
+        rpc_tensor src = make_f32(6, 0, canary_addr, 4);
+        rpc_tensor v   = make_f32(5, 0, canary_addr, 4);
         v.op = GGML_OP_RESHAPE;
-        ok = ok && graph_compute(s.fd, { v.id }, { v });
+        v.src[0]   = src.id;
+        v.view_src = src.id;
+        ok = ok && graph_compute(s.fd, { v.id }, { v, src });
         check(ok && canary[0] == -1.0f && canary[3] == -1.0f, "no-op node with foreign data is ignored");
     }
 

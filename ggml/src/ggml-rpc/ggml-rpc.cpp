@@ -1130,7 +1130,8 @@ ggml_tensor * rpc_server::deserialize_tensor(struct ggml_context * ctx, const rp
         return nullptr;
     }
     // CPU kernels write whole rows of ne[0] elements, so the innermost stride must cover one element/block
-    if (tensor->nb[0] < ggml_type_size(type)) {
+    const bool has_elements = tensor->ne[0] && tensor->ne[1] && tensor->ne[2] && tensor->ne[3];
+    if (has_elements && tensor->nb[0] < ggml_type_size(type)) {
         GGML_LOG_ERROR("[%s] nb[0]=%u is smaller than the type size of type %u\n", __func__, tensor->nb[0], tensor->type);
         return nullptr;
     }
@@ -1472,7 +1473,8 @@ ggml_tensor * rpc_server::create_node(uint64_t id,
         const ggml_tensor * view_src = result->view_src;
         if (view_src->buffer != result->buffer ||
             (result->buffer != nullptr &&
-             (tensor->view_offs > (uint64_t) ggml_nbytes(view_src) ||
+             ((tensor->view_offs > (uint64_t) ggml_nbytes(view_src) && ggml_nbytes(result) != 0) ||
+              tensor->view_offs > UINT64_MAX - (uint64_t) view_src->data ||
               (uint64_t) view_src->data + tensor->view_offs != tensor->data))) {
             GGML_LOG_ERROR("[%s] invalid view (view_src_id=%" PRIu64 ", view_offs=%" PRIu64 ") for node id %" PRIu64 "\n",
                            __func__, tensor->view_src, tensor->view_offs, id);
@@ -1490,7 +1492,7 @@ static bool validate_graph(ggml_backend_t backend, const ggml_cgraph * graph) {
     };
     for (int i = 0; i < graph->n_nodes; i++) {
         const ggml_tensor * node = graph->nodes[i];
-        if (ggml_op_is_empty(node->op)) {
+        if (ggml_op_is_empty(node->op) || ggml_is_empty(node)) {
             continue;
         }
         // custom ops carry raw function pointers in op_params
@@ -1504,7 +1506,8 @@ static bool validate_graph(ggml_backend_t backend, const ggml_cgraph * graph) {
             return false;
         }
         for (int j = 0; j < GGML_MAX_SRC; j++) {
-            if (node->src[j] != nullptr && !usable(node->src[j])) {
+            // zero-element sources have no storage to read
+            if (node->src[j] != nullptr && !ggml_is_empty(node->src[j]) && !usable(node->src[j])) {
                 GGML_LOG_ERROR("[%s] source %d of graph node %d (%s) is not in a valid buffer for this backend\n", __func__, j, i, ggml_op_name(node->op));
                 return false;
             }
