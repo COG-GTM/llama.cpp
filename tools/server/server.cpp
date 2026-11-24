@@ -23,6 +23,7 @@
 #include <cstddef>
 #include <cinttypes>
 #include <deque>
+#include <filesystem>
 #include <memory>
 #include <mutex>
 #include <signal.h>
@@ -4782,11 +4783,17 @@ int main(int argc, char ** argv) {
         // save files are namespaced per API key so one key cannot read or overwrite another key's files
         std::string save_dir = params.slot_save_path;
         if (!owner.empty()) {
-            save_dir += owner + DIRECTORY_SEPARATOR;
-            if (!fs_create_directory_with_parents(save_dir)) {
+            const std::filesystem::path owner_dir = std::filesystem::path(save_dir) / owner;
+            std::error_code ec;
+            std::filesystem::create_directories(owner_dir, ec);
+            if (!ec) {
+                std::filesystem::permissions(owner_dir, std::filesystem::perms::owner_all, std::filesystem::perm_options::replace, ec);
+            }
+            if (ec) {
                 res_error(res, format_error_response("Unable to create slot save directory", ERROR_TYPE_SERVER));
                 return;
             }
+            save_dir += owner + DIRECTORY_SEPARATOR;
         }
         std::string filepath = save_dir + filename;
 
