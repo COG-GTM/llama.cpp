@@ -1491,6 +1491,11 @@ struct server_prompt_cache {
 
         // next, remove any cached prompts that are fully contained in the current prompt
         for (auto it = states.begin(); it != states.end();) {
+            if (it->owner != prompt.owner) {
+                ++it;
+                continue;
+            }
+
             const int len = it->tokens.get_common_prefix(prompt.tokens);
 
             if (len == (int) it->tokens.size()) {
@@ -1532,7 +1537,8 @@ struct server_prompt_cache {
     }
 
     bool load(server_prompt & prompt, const server_tokens & tokens_new, const std::string & owner, llama_context * ctx, int32_t id_slot) {
-        const int lcp_best = prompt.tokens.get_common_prefix(tokens_new);
+        // the slot's current prompt is discarded on launch if it belongs to another API key, so it is no baseline
+        const int lcp_best = prompt.owner == owner ? prompt.tokens.get_common_prefix(tokens_new) : 0;
 
         float f_keep_best = float(lcp_best) / prompt.tokens.size();
         float sim_best    = float(lcp_best) / tokens_new.size();
@@ -2752,6 +2758,19 @@ struct server_context {
             slot.prompt.tokens.clear();
             slot.prompt.checkpoints.clear();
             slot.prompt.owner = task.owner;
+
+            if (slot.spec) {
+                llama_memory_clear(llama_get_memory(slot.ctx_dft), true);
+                common_speculative_free(slot.spec);
+                slot.spec = common_speculative_init(slot.ctx, slot.ctx_dft);
+                if (slot.spec == nullptr) {
+                    send_error(task, "Failed to reset speculative decoding state", ERROR_TYPE_SERVER);
+                    return false;
+                }
+                for (auto & pair : params_base.speculative.replacements) {
+                    common_speculative_add_replacement_tgt_dft(slot.spec, pair.first.c_str(), pair.second.c_str());
+                }
+            }
         }
 
         if (!are_lora_equal(task.params.lora, slot.lora)) {
@@ -3471,14 +3490,15 @@ struct server_context {
                         send_error(task, "Invalid slot ID", ERROR_TYPE_INVALID_REQUEST);
                         break;
                     }
+                    // a busy slot already belongs to the owner of its running task
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
+                        break;
+                    }
                     if (slot->is_processing()) {
                         // if requested slot is unavailable, we defer this task for processing later
                         SRV_DBG("requested slot is unavailable, defer task, id_task = %d\n", task.id);
                         queue_tasks.defer(std::move(task));
-                        break;
-                    }
-                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
-                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
 
@@ -3518,14 +3538,15 @@ struct server_context {
                         send_error(task, "Invalid slot ID", ERROR_TYPE_INVALID_REQUEST);
                         break;
                     }
+                    // a busy slot already belongs to the owner of its running task
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
+                        break;
+                    }
                     if (slot->is_processing()) {
                         // if requested slot is unavailable, we defer this task for processing later
                         SRV_DBG("requested slot is unavailable, defer task, id_task = %d\n", task.id);
                         queue_tasks.defer(std::move(task));
-                        break;
-                    }
-                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
-                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
 
@@ -3577,14 +3598,15 @@ struct server_context {
                         send_error(task, "Invalid slot ID", ERROR_TYPE_INVALID_REQUEST);
                         break;
                     }
+                    // a busy slot already belongs to the owner of its running task
+                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
+                        break;
+                    }
                     if (slot->is_processing()) {
                         // if requested slot is unavailable, we defer this task for processing later
                         SRV_DBG("requested slot is unavailable, defer task, id_task = %d\n", task.id);
                         queue_tasks.defer(std::move(task));
-                        break;
-                    }
-                    if (!slot->prompt.owner.empty() && slot->prompt.owner != task.owner) {
-                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
 
