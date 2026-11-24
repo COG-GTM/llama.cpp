@@ -890,7 +890,7 @@ This endpoint is enabled by default and can be disabled with `--no-slots`. It ca
 
 If query param `?fail_on_no_slot=1` is set, this endpoint will respond with status code 503 if there is no available slots.
 
-The `prompt` and `generated` text of a slot are only included when the server runs with `LLAMA_SERVER_SLOTS_DEBUG=1`, and only for slots whose last request used the caller's API key.
+The `prompt` and `generated` text of a slot are only included when the server runs with `LLAMA_SERVER_SLOTS_DEBUG` set to a non-zero value, and only for slots whose last request used the caller's API key.
 
 **Response format**
 
