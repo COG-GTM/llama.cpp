@@ -4250,6 +4250,34 @@ void ggml_compute_forward_scale(
 
 // ggml_compute_forward_set
 
+// checks that writing src1 into dst with the strides and offset in dst->op_params stays inside dst
+static bool ggml_set_in_bounds(const ggml_tensor * dst, const ggml_tensor * src1, size_t nb0) {
+    const int32_t * p = (const int32_t *) dst->op_params;
+    if (ggml_nelements(src1) == 0) {
+        return true;
+    }
+    if (p[3] < 0) {
+        return false;
+    }
+    const uint64_t nbytes = ggml_nbytes(dst);
+    uint64_t end = (uint64_t) p[3] + nb0;
+    for (int i = 0; i < GGML_MAX_DIMS; i++) {
+        const uint64_t n = (uint64_t) (src1->ne[i] - 1);
+        if (n == 0) {
+            continue; // stride unused (ggml_set_1d passes the destination's, which may not fit in int32)
+        }
+        if (i > 0 && p[i - 1] < 0) {
+            return false;
+        }
+        const uint64_t nb = i == 0 ? nb0 : (uint64_t) p[i - 1];
+        if (end > nbytes || (nb != 0 && n > (nbytes - end) / nb)) {
+            return false;
+        }
+        end += n * nb;
+    }
+    return end <= nbytes;
+}
+
 static void ggml_compute_forward_set_f32(
         const ggml_compute_params * params,
         ggml_tensor * dst) {
@@ -4292,12 +4320,7 @@ static void ggml_compute_forward_set_f32(
     // src0 and dst as viewed during set
     const size_t nb0 = ggml_element_size(src0);
 
-    const int im0 = (ne10 == 0 ? 0 : ne10-1);
-    const int im1 = (ne11 == 0 ? 0 : ne11-1);
-    const int im2 = (ne12 == 0 ? 0 : ne12-1);
-    const int im3 = (ne13 == 0 ? 0 : ne13-1);
-
-    GGML_ASSERT(offset + im0*nb0  + im1*nb1  + im2*nb2  + im3*nb3  <= ggml_nbytes(dst));
+    GGML_ASSERT(ggml_set_in_bounds(dst, src1, nb0));
 
     GGML_ASSERT(nb10 == sizeof(float));
 
@@ -4363,12 +4386,7 @@ static void ggml_compute_forward_set_i32(
     // src0 and dst as viewed during set
     const size_t nb0 = ggml_element_size(src0);
 
-    const int im0 = (ne10 == 0 ? 0 : ne10-1);
-    const int im1 = (ne11 == 0 ? 0 : ne11-1);
-    const int im2 = (ne12 == 0 ? 0 : ne12-1);
-    const int im3 = (ne13 == 0 ? 0 : ne13-1);
-
-    GGML_ASSERT(offset + im0*nb0  + im1*nb1  + im2*nb2  + im3*nb3  <= ggml_nbytes(dst));
+    GGML_ASSERT(ggml_set_in_bounds(dst, src1, nb0));
 
     GGML_ASSERT(nb10 == sizeof(int32_t));
 

@@ -2441,9 +2441,10 @@ struct test_set : public test_case {
     const ggml_type type_dst;
     const std::array<int64_t, 4> ne;
     const int dim;
+    const bool at_end; // place the patch so that it ends exactly at the end of dst
 
     std::string vars() override {
-        return VARS_TO_STR4(type_src, type_dst, ne, dim);
+        return VARS_TO_STR5(type_src, type_dst, ne, dim, at_end);
     }
 
     size_t op_size(ggml_tensor * t) override {
@@ -2451,8 +2452,8 @@ struct test_set : public test_case {
     }
 
     test_set(ggml_type type_src = GGML_TYPE_F32, ggml_type type_dst = GGML_TYPE_F32,
-            std::array<int64_t, 4> ne = {6, 5, 4, 3}, int dim = 1)
-        : type_src(type_src), type_dst(type_dst), ne(ne), dim(dim) {}
+            std::array<int64_t, 4> ne = {6, 5, 4, 3}, int dim = 1, bool at_end = false)
+        : type_src(type_src), type_dst(type_dst), ne(ne), dim(dim), at_end(at_end) {}
 
     ggml_tensor * build_graph(ggml_context * ctx) override {
         ggml_tensor * src = ggml_new_tensor(ctx, type_src, 4, ne.data());
@@ -2470,6 +2471,9 @@ struct test_set : public test_case {
         size_t offset = 0;
         for (int i = 0; i < dim; ++i) {
             offset += ((ne_dst[i] - ne[i])/2)*dst->nb[i];
+        }
+        if (at_end) {
+            offset = ggml_nbytes(dst) - ggml_nbytes(src);
         }
         ggml_tensor * out = ggml_set(ctx, dst, src,
             // The backward pass requires setting a contiguous region:
@@ -6320,10 +6324,12 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
 
     for (int dim = 1; dim < GGML_MAX_DIMS; ++dim) {
         test_cases.emplace_back(new test_set(GGML_TYPE_F32, GGML_TYPE_F32, {6, 5, 4, 3}, dim));
+        test_cases.emplace_back(new test_set(GGML_TYPE_F32, GGML_TYPE_F32, {6, 5, 4, 3}, dim, true));
     }
 
     for (int dim = 1; dim < GGML_MAX_DIMS; ++dim) {
         test_cases.emplace_back(new test_set(GGML_TYPE_I32, GGML_TYPE_I32, {6, 5, 4, 3}, dim));
+        test_cases.emplace_back(new test_set(GGML_TYPE_I32, GGML_TYPE_I32, {6, 5, 4, 3}, dim, true));
     }
 
     // same-type copy
