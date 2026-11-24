@@ -224,7 +224,7 @@ get_filename_component(TEST_TARGET test-c.c NAME_WE)
 add_executable(${TEST_TARGET} test-c.c)
 target_link_libraries(${TEST_TARGET} PRIVATE llama)
 
-if (GGML_RPC AND NOT WIN32 AND NOT GGML_BACKEND_DL)
+if (GGML_RPC AND GGML_CPU AND NOT WIN32 AND NOT GGML_BACKEND_DL)
     llama_build_and_test(test-rpc-server.cpp)
 endif()
 
