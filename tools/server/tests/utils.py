@@ -82,6 +82,7 @@ class ServerProcess:
     pooling: str | None = None
     draft: int | None = None
     api_key: str | None = None
+    extra_api_keys: List[str] | None = None
     lora_files: List[str] | None = None
     enable_ctx_shift: int | None = False
     draft_min: int | None = None
@@ -194,6 +195,9 @@ class ServerProcess:
             server_args.append("--context-shift")
         if self.api_key:
             server_args.extend(["--api-key", self.api_key])
+        if self.extra_api_keys:
+            for key in self.extra_api_keys:
+                server_args.extend(["--api-key", key])
         if self.draft_max:
             server_args.extend(["--draft-max", self.draft_max])
         if self.draft_min:

@@ -268,6 +268,9 @@ struct server_task {
     int id_target = -1;
     int id_slot   = -1;
 
+    // identity of the API key that created the task (empty when no API keys are configured)
+    std::string owner;
+
     // used by SERVER_TASK_TYPE_INFERENCE
     slot_params   params;
     server_tokens tokens;
@@ -1631,6 +1634,9 @@ struct server_slot {
     std::unique_ptr<const server_task> task;
     std::unique_ptr<const server_task> task_prev; // used for debugging
 
+    // owner of the last task run in this slot; its data stays in the KV cache after release
+    std::string owner;
+
     // used to determine the slot that has been used the longest
     int64_t t_last_used = -1;
 
@@ -2708,6 +2714,8 @@ struct server_context {
     bool launch_slot_with_task(server_slot & slot, server_task && task) {
         slot.reset();
 
+        slot.owner = task.owner;
+
         if (!are_lora_equal(task.params.lora, slot.lora)) {
             // if lora has changed, check to see if the cache should be cleared
             if (lora_should_clear_cache(slot.lora, task.params.lora)) {
@@ -3371,7 +3379,9 @@ struct server_context {
                     int n_processing_slots = 0;
 
                     for (server_slot & slot : slots) {
-                        json slot_data = slot.to_json(slots_debug == 0);
+                        // prompt and generated text are only shown in debug mode, and only to the slot's owner
+                        const bool show_text = slots_debug != 0 && slot.owner == task.owner;
+                        json slot_data = slot.to_json(!show_text);
 
                         if (slot.is_processing()) {
                             n_processing_slots++;
@@ -3429,6 +3439,10 @@ struct server_context {
                         queue_tasks.defer(std::move(task));
                         break;
                     }
+                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
+                        break;
+                    }
 
                     const size_t token_count = slot->prompt.tokens.size();
                     const int64_t t_start = ggml_time_us();
@@ -3467,6 +3481,10 @@ struct server_context {
                         queue_tasks.defer(std::move(task));
                         break;
                     }
+                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
+                        break;
+                    }
 
                     const int64_t t_start = ggml_time_us();
 
@@ -3485,6 +3503,7 @@ struct server_context {
                     tokens.resize(token_count);
                     slot->prompt.tokens.clear();
                     slot->prompt.tokens.insert(tokens);
+                    slot->owner = task.owner;
 
                     const int64_t t_end = ggml_time_us();
                     const double t_restore_ms = (t_end - t_start) / 1000.0;
@@ -3514,6 +3533,10 @@ struct server_context {
                         // if requested slot is unavailable, we defer this task for processing later
                         SRV_DBG("requested slot is unavailable, defer task, id_task = %d\n", task.id);
                         queue_tasks.defer(std::move(task));
+                        break;
+                    }
+                    if (!slot->owner.empty() && slot->owner != task.owner) {
+                        send_error(task, "Slot is owned by another API key", ERROR_TYPE_PERMISSION);
                         break;
                     }
 
@@ -4587,6 +4610,19 @@ int main(int argc, char ** argv) {
     // Route handlers (or controllers)
     //
 
+    // identity of the caller, derived from the API key it authenticated with (empty when no API keys are configured)
+    const auto get_request_owner = [&params](const httplib::Request & req) -> std::string {
+        if (params.api_keys.empty()) {
+            return "";
+        }
+        const std::string auth_header = req.get_header_value("Authorization");
+        const std::string prefix = "Bearer ";
+        if (auth_header.compare(0, prefix.size(), prefix) != 0) {
+            return "";
+        }
+        return sha256_hex(auth_header.substr(prefix.size()));
+    };
+
     const auto handle_health = [&](const httplib::Request &, httplib::Response & res) {
         // error and loading states are handled by middleware
         json health = {{"status", "ok"}};
@@ -4604,6 +4640,7 @@ int main(int argc, char ** argv) {
         {
             server_task task(SERVER_TASK_TYPE_METRICS);
             task.id = task_id;
+            task.owner = get_request_owner(req);
             ctx_server.queue_results.add_waiting_task_id(task_id);
             ctx_server.queue_tasks.post(std::move(task), true); // high-priority task
         }
@@ -4733,19 +4770,30 @@ int main(int argc, char ** argv) {
         res.status = 200; // HTTP OK
     };
 
-    const auto handle_slots_save = [&ctx_server, &res_error, &res_ok, &params](const httplib::Request & req, httplib::Response & res, int id_slot) {
+    const auto handle_slots_save = [&ctx_server, &res_error, &res_ok, &params, &get_request_owner](const httplib::Request & req, httplib::Response & res, int id_slot) {
         json request_data = json::parse(req.body);
         std::string filename = request_data.at("filename");
         if (!fs_validate_filename(filename)) {
             res_error(res, format_error_response("Invalid filename", ERROR_TYPE_INVALID_REQUEST));
             return;
         }
-        std::string filepath = params.slot_save_path + filename;
+        const std::string owner = get_request_owner(req);
+        // save files are namespaced per API key so one key cannot read or overwrite another key's files
+        std::string save_dir = params.slot_save_path;
+        if (!owner.empty()) {
+            save_dir += owner + DIRECTORY_SEPARATOR;
+            if (!fs_create_directory_with_parents(save_dir)) {
+                res_error(res, format_error_response("Unable to create slot save directory", ERROR_TYPE_SERVER));
+                return;
+            }
+        }
+        std::string filepath = save_dir + filename;
 
         int task_id = ctx_server.queue_tasks.get_new_id();
         {
             server_task task(SERVER_TASK_TYPE_SLOT_SAVE);
             task.id = task_id;
+            task.owner = owner;
             task.slot_action.slot_id  = id_slot;
             task.slot_action.filename = filename;
             task.slot_action.filepath = filepath;
@@ -4765,19 +4813,25 @@ int main(int argc, char ** argv) {
         res_ok(res, result->to_json());
     };
 
-    const auto handle_slots_restore = [&ctx_server, &res_error, &res_ok, &params](const httplib::Request & req, httplib::Response & res, int id_slot) {
+    const auto handle_slots_restore = [&ctx_server, &res_error, &res_ok, &params, &get_request_owner](const httplib::Request & req, httplib::Response & res, int id_slot) {
         json request_data = json::parse(req.body);
         std::string filename = request_data.at("filename");
         if (!fs_validate_filename(filename)) {
             res_error(res, format_error_response("Invalid filename", ERROR_TYPE_INVALID_REQUEST));
             return;
         }
-        std::string filepath = params.slot_save_path + filename;
+        const std::string owner = get_request_owner(req);
+        std::string filepath = params.slot_save_path;
+        if (!owner.empty()) {
+            filepath += owner + DIRECTORY_SEPARATOR;
+        }
+        filepath += filename;
 
         int task_id = ctx_server.queue_tasks.get_new_id();
         {
             server_task task(SERVER_TASK_TYPE_SLOT_RESTORE);
             task.id = task_id;
+            task.owner = owner;
             task.slot_action.slot_id  = id_slot;
             task.slot_action.filename = filename;
             task.slot_action.filepath = filepath;
@@ -4798,11 +4852,12 @@ int main(int argc, char ** argv) {
         res_ok(res, result->to_json());
     };
 
-    const auto handle_slots_erase = [&ctx_server, &res_error, &res_ok](const httplib::Request & /* req */, httplib::Response & res, int id_slot) {
+    const auto handle_slots_erase = [&ctx_server, &res_error, &res_ok, &get_request_owner](const httplib::Request & req, httplib::Response & res, int id_slot) {
         int task_id = ctx_server.queue_tasks.get_new_id();
         {
             server_task task(SERVER_TASK_TYPE_SLOT_ERASE);
             task.id = task_id;
+            task.owner = get_request_owner(req);
             task.slot_action.slot_id = id_slot;
 
             ctx_server.queue_results.add_waiting_task_id(task_id);
@@ -4941,7 +4996,8 @@ int main(int argc, char ** argv) {
             const std::vector<raw_buffer> & files,
             const std::function<bool()> & is_connection_closed,
             httplib::Response & res,
-            oaicompat_type oaicompat) -> void {
+            oaicompat_type oaicompat,
+            const std::string & owner) -> void {
         GGML_ASSERT(type == SERVER_TASK_TYPE_COMPLETION || type == SERVER_TASK_TYPE_INFILL);
 
         auto completion_id = gen_chatcmplid();
@@ -4985,6 +5041,7 @@ int main(int argc, char ** argv) {
                         ctx_server.params_base,
                         data);
                 task.id_slot = json_value(data, "id_slot", -1);
+                task.owner   = owner;
 
                 // OAI-compat
                 task.params.oaicompat                 = oaicompat;
@@ -5059,7 +5116,7 @@ int main(int argc, char ** argv) {
         }
     };
 
-    const auto handle_completions = [&handle_completions_impl](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_completions = [&handle_completions_impl, &get_request_owner](const httplib::Request & req, httplib::Response & res) {
         json data = json::parse(req.body);
         std::vector<raw_buffer> files; // dummy
         handle_completions_impl(
@@ -5068,10 +5125,11 @@ int main(int argc, char ** argv) {
             files,
             req.is_connection_closed,
             res,
-            OAICOMPAT_TYPE_NONE);
+            OAICOMPAT_TYPE_NONE,
+            get_request_owner(req));
     };
 
-    const auto handle_completions_oai = [&handle_completions_impl](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_completions_oai = [&handle_completions_impl, &get_request_owner](const httplib::Request & req, httplib::Response & res) {
         json data = oaicompat_completion_params_parse(json::parse(req.body));
         std::vector<raw_buffer> files; // dummy
         handle_completions_impl(
@@ -5080,10 +5138,11 @@ int main(int argc, char ** argv) {
             files,
             req.is_connection_closed,
             res,
-            OAICOMPAT_TYPE_COMPLETION);
+            OAICOMPAT_TYPE_COMPLETION,
+            get_request_owner(req));
     };
 
-    const auto handle_infill = [&ctx_server, &res_error, &handle_completions_impl](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_infill = [&ctx_server, &res_error, &handle_completions_impl, &get_request_owner](const httplib::Request & req, httplib::Response & res) {
         // check model compatibility
         std::string err;
         if (llama_vocab_fim_pre(ctx_server.vocab) == LLAMA_TOKEN_NULL) {
@@ -5159,10 +5218,11 @@ int main(int argc, char ** argv) {
             files,
             req.is_connection_closed,
             res,
-            OAICOMPAT_TYPE_NONE); // infill is not OAI compatible
+            OAICOMPAT_TYPE_NONE, // infill is not OAI compatible
+            get_request_owner(req));
     };
 
-    const auto handle_chat_completions = [&ctx_server, &handle_completions_impl](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_chat_completions = [&ctx_server, &handle_completions_impl, &get_request_owner](const httplib::Request & req, httplib::Response & res) {
         LOG_DBG("request: %s\n", req.body.c_str());
 
         auto body = json::parse(req.body);
@@ -5178,7 +5238,8 @@ int main(int argc, char ** argv) {
             files,
             req.is_connection_closed,
             res,
-            OAICOMPAT_TYPE_CHAT);
+            OAICOMPAT_TYPE_CHAT,
+            get_request_owner(req));
     };
 
     // same with handle_chat_completions, but without inference part
@@ -5291,7 +5352,7 @@ int main(int argc, char ** argv) {
         res_ok(res, data);
     };
 
-    const auto handle_embeddings_impl = [&ctx_server, &res_error, &res_ok](const httplib::Request & req, httplib::Response & res, oaicompat_type oaicompat) {
+    const auto handle_embeddings_impl = [&ctx_server, &res_error, &res_ok, &get_request_owner](const httplib::Request & req, httplib::Response & res, oaicompat_type oaicompat) {
         if (!ctx_server.params_base.embedding) {
             res_error(res, format_error_response("This server does not support embeddings. Start it with `--embeddings`", ERROR_TYPE_NOT_SUPPORTED));
             return;
@@ -5356,6 +5417,7 @@ int main(int argc, char ** argv) {
                 task.id     = ctx_server.queue_tasks.get_new_id();
                 task.index  = i;
                 task.tokens = std::move(tokenized_prompts[i]);
+                task.owner  = get_request_owner(req);
 
                 // OAI-compat
                 task.params.oaicompat = oaicompat;
@@ -5401,7 +5463,7 @@ int main(int argc, char ** argv) {
         handle_embeddings_impl(req, res, OAICOMPAT_TYPE_EMBEDDING);
     };
 
-    const auto handle_rerank = [&ctx_server, &res_error, &res_ok](const httplib::Request & req, httplib::Response & res) {
+    const auto handle_rerank = [&ctx_server, &res_error, &res_ok, &get_request_owner](const httplib::Request & req, httplib::Response & res) {
         if (!ctx_server.params_base.embedding || ctx_server.params_base.pooling_type != LLAMA_POOLING_TYPE_RANK) {
             res_error(res, format_error_response("This server does not support reranking. Start it with `--reranking`", ERROR_TYPE_NOT_SUPPORTED));
             return;
@@ -5448,6 +5510,7 @@ int main(int argc, char ** argv) {
                 task.id     = ctx_server.queue_tasks.get_new_id();
                 task.index  = i;
                 task.tokens = std::move(tmp);
+                task.owner  = get_request_owner(req);
                 tasks.push_back(std::move(task));
             }
 
