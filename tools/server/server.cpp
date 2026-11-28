@@ -2991,7 +2991,7 @@ struct server_context {
             }
         } else {
             // TODO: optimize this with min-p optimization
-            std::vector<llama_token_data> cur = get_token_probabilities(ctx, idx);
+            std::vector<llama_token_data> cur = get_token_probabilities(ctx, idx, n_probs);
 
             // set probability for sampled token
             for (size_t i = 0; i < n_vocab; i++) {
