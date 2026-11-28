@@ -950,7 +950,42 @@ static std::string safe_json_to_str(const json & data) {
     return data.dump(-1, ' ', false, json::error_handler_t::replace);
 }
 
-static std::vector<llama_token_data> get_token_probabilities(llama_context * ctx, int idx) {
+// sum of non-negative floats, added in descending order (the order a full sort by logit gives)
+// uses an LSD radix sort on the IEEE-754 bits, which order like the values for non-negative floats
+static float sum_descending(const std::vector<float> & vals) {
+    const size_t n = vals.size();
+    std::vector<uint32_t> keys(n);
+    std::vector<uint32_t> tmp(n);
+    for (size_t i = 0; i < n; i++) {
+        uint32_t u;
+        memcpy(&u, &vals[i], sizeof(u));
+        keys[i] = ~u; // ascending order of ~bits is descending order of values
+    }
+    for (int shift = 0; shift < 32; shift += 8) {
+        size_t count[257] = {0};
+        for (size_t i = 0; i < n; i++) {
+            count[((keys[i] >> shift) & 0xFF) + 1]++;
+        }
+        for (int b = 0; b < 256; b++) {
+            count[b + 1] += count[b];
+        }
+        for (size_t i = 0; i < n; i++) {
+            tmp[count[(keys[i] >> shift) & 0xFF]++] = keys[i];
+        }
+        keys.swap(tmp);
+    }
+    float sum = 0.0f;
+    for (size_t i = 0; i < n; i++) {
+        const uint32_t u = ~keys[i];
+        float f;
+        memcpy(&f, &u, sizeof(f));
+        sum += f;
+    }
+    return sum;
+}
+
+// returns the probabilities of all tokens; only the first n_sorted entries are sorted by logit
+static std::vector<llama_token_data> get_token_probabilities(llama_context * ctx, int idx, size_t n_sorted) {
     std::vector<llama_token_data> cur;
     const auto * logits = llama_get_logits_ith(ctx, idx);
 
@@ -964,18 +999,33 @@ static std::vector<llama_token_data> get_token_probabilities(llama_context * ctx
         cur[token_id] = llama_token_data{token_id, logits[token_id], 0.0f};
     }
 
-    // sort tokens by logits
-    std::sort(cur.begin(), cur.end(), [](const llama_token_data & a, const llama_token_data & b) {
-        return a.logit > b.logit;
-    });
+    // sort the top tokens by logits (at least 1, so that cur[0] holds the max logit)
+    // ties are broken by token id so the order does not depend on n_sorted
+    const auto cmp = [](const llama_token_data & a, const llama_token_data & b) {
+        return a.logit > b.logit || (a.logit == b.logit && a.id < b.id);
+    };
+    n_sorted = std::min(std::max(n_sorted, (size_t) 1), cur.size());
+    const bool full_sort = n_sorted == cur.size();
+    if (full_sort) {
+        std::sort(cur.begin(), cur.end(), cmp);
+    } else {
+        std::partial_sort(cur.begin(), cur.begin() + n_sorted, cur.end(), cmp);
+    }
 
-    // apply softmax
+    // apply softmax, summing in descending order
     float max_l = cur[0].logit;
     float cum_sum = 0.0f;
+    std::vector<float> exps(full_sort ? 0 : cur.size());
     for (size_t i = 0; i < cur.size(); ++i) {
-        float p = expf(cur[i].logit - max_l);
-        cur[i].p = p;
-        cum_sum += p;
+        cur[i].p = expf(cur[i].logit - max_l);
+        if (full_sort) {
+            cum_sum += cur[i].p;
+        } else {
+            exps[i] = cur[i].p;
+        }
+    }
+    if (!full_sort) {
+        cum_sum = sum_descending(exps);
     }
     for (size_t i = 0; i < cur.size(); ++i) {
         cur[i].p /= cum_sum;
