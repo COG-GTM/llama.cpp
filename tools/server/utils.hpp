@@ -1000,18 +1000,33 @@ static std::vector<llama_token_data> get_token_probabilities(llama_context * ctx
     }
 
     // sort the top tokens by logits (at least 1, so that cur[0] holds the max logit)
+    // ties are broken by token id so the order does not depend on n_sorted
+    const auto cmp = [](const llama_token_data & a, const llama_token_data & b) {
+        return a.logit > b.logit || (a.logit == b.logit && a.id < b.id);
+    };
     n_sorted = std::min(std::max(n_sorted, (size_t) 1), cur.size());
-    std::partial_sort(cur.begin(), cur.begin() + n_sorted, cur.end(), [](const llama_token_data & a, const llama_token_data & b) {
-        return a.logit > b.logit;
-    });
-
-    // apply softmax
-    float max_l = cur[0].logit;
-    std::vector<float> exps(cur.size());
-    for (size_t i = 0; i < cur.size(); ++i) {
-        exps[i] = cur[i].p = expf(cur[i].logit - max_l);
+    const bool full_sort = n_sorted == cur.size();
+    if (full_sort) {
+        std::sort(cur.begin(), cur.end(), cmp);
+    } else {
+        std::partial_sort(cur.begin(), cur.begin() + n_sorted, cur.end(), cmp);
     }
-    const float cum_sum = sum_descending(exps);
+
+    // apply softmax, summing in descending order
+    float max_l = cur[0].logit;
+    float cum_sum = 0.0f;
+    std::vector<float> exps(full_sort ? 0 : cur.size());
+    for (size_t i = 0; i < cur.size(); ++i) {
+        cur[i].p = expf(cur[i].logit - max_l);
+        if (full_sort) {
+            cum_sum += cur[i].p;
+        } else {
+            exps[i] = cur[i].p;
+        }
+    }
+    if (!full_sort) {
+        cum_sum = sum_descending(exps);
+    }
     for (size_t i = 0; i < cur.size(); ++i) {
         cur[i].p /= cum_sum;
     }
